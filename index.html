@@ -17,6 +17,7 @@
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;overflow:hidden;touch-action:none}
+body.in-assess{overflow:hidden;touch-action:auto} /* assess handles its own scroll */
 body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text)}
 body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.08) 2px,rgba(0,0,0,.08) 4px);pointer-events:none;z-index:9000}
 #gc{width:100vw;height:100vh;overflow:hidden;position:relative}
@@ -40,7 +41,17 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
 /* ── ASSESS ── */
 #s-assess{padding:0;align-items:stretch;justify-content:flex-start}
 .a-layout{display:grid;grid-template-columns:230px 1fr;height:100vh;width:100%}
-@media(max-width:640px){.a-layout{grid-template-columns:1fr}.a-side{display:none}}
+@media(max-width:640px){
+  .a-layout{grid-template-columns:1fr;height:100vh;}
+  .a-side{display:none}
+  .a-main{padding:1rem 1rem 5rem 1rem} /* bottom padding for sticky btn */
+  .a-footer{position:fixed;bottom:0;left:0;right:0;background:var(--bg);border-top:1px solid var(--border);padding:.75rem 1rem;margin:0;max-width:100%;z-index:50;border-radius:0;}
+  .a-note{display:none} /* hide note on mobile to save space */
+  .a-title{font-size:1.1rem}
+  .a-sub{font-size:.78rem}
+  .bq-q{font-size:.78rem}
+  .bq-opt{font-size:.68rem;padding:.28rem .55rem}
+}
 .a-side{background:var(--surface);border-right:1px solid var(--border);padding:2rem 1.25rem;display:flex;flex-direction:column;gap:.8rem;overflow-y:auto}
 .a-side-title{font-family:'Space Mono',monospace;font-size:.52rem;color:var(--muted);letter-spacing:.18em;text-transform:uppercase;margin-bottom:.2rem}
 .a-step{display:flex;align-items:center;gap:.6rem;padding:.5rem .65rem;border-radius:8px;font-size:.78rem;color:var(--muted);transition:all .2s}
@@ -49,8 +60,8 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
 .a-step .snum{width:20px;height:20px;border-radius:50%;border:1.5px solid currentColor;display:flex;align-items:center;justify-content:center;font-family:'Space Mono',monospace;font-size:.48rem;flex-shrink:0}
 .a-step.done .snum{background:var(--accent3);border-color:var(--accent3);color:var(--bg)}
 .a-side-note{margin-top:auto;font-size:.68rem;color:var(--muted);line-height:1.6;padding-top:1rem;border-top:1px solid var(--border)}
-.a-main{padding:2.5rem;overflow-y:auto;display:flex;flex-direction:column;gap:1.3rem}
-@media(max-width:800px){.a-main{padding:1.25rem}}
+.a-main{padding:2.5rem;overflow-y:auto;display:flex;flex-direction:column;gap:1.3rem;height:100vh;box-sizing:border-box;}
+@media(max-width:800px) and (min-width:641px){.a-main{padding:1.25rem}}
 .a-tag{font-family:'Space Mono',monospace;font-size:.52rem;color:var(--accent);letter-spacing:.15em;text-transform:uppercase}
 .a-title{font-size:1.4rem;font-weight:700;line-height:1.3}
 .a-sub{font-size:.85rem;color:var(--muted);line-height:1.65;max-width:580px}
@@ -71,7 +82,7 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
 input[type=range]{-webkit-appearance:none;width:100%;height:4px;background:var(--border);border-radius:2px;outline:none;cursor:pointer}
 input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:50%;background:var(--accent);box-shadow:0 0 8px rgba(124,106,247,.5);cursor:pointer}
 .sl-ends{display:flex;justify-content:space-between;font-size:.66rem;color:var(--muted)}
-.a-footer{display:flex;align-items:center;justify-content:space-between;padding-top:1rem;border-top:1px solid var(--border);max-width:620px;gap:1rem}
+.a-footer{display:flex;align-items:center;justify-content:flex-end;padding-top:1rem;border-top:1px solid var(--border);max-width:620px;gap:1rem;margin-top:auto}
 .a-note{font-size:.7rem;color:var(--muted);font-style:italic;line-height:1.5;max-width:300px}
 .btn-next{font-family:'Space Mono',monospace;font-size:.63rem;padding:.72rem 1.55rem;background:var(--accent);border:none;border-radius:8px;color:white;cursor:pointer;letter-spacing:.05em;transition:all .2s;white-space:nowrap}
 .btn-next:hover{background:#9585ff;transform:translateY(-1px);box-shadow:0 4px 16px rgba(124,106,247,.4)}
@@ -488,6 +499,8 @@ function show(id){
   document.querySelectorAll('.scr').forEach(s=>s.classList.remove('on'));
   document.getElementById('s-'+id).classList.add('on');
   ST.screen=id;
+  // allow touch scroll in assess, block it elsewhere (prevents Phaser conflicts)
+  document.body.classList.toggle('in-assess', id==='assess');
 }
 
 // ══════════════════════════════════════
