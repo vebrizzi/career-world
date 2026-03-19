@@ -2436,6 +2436,7 @@ function initGame(worldId){
     : 'Premi <kbd>SPAZIO</kbd> o <kbd>Z</kbd> vicino a un NPC per interagire';
 
   if(intro){
+    hideTc();
     document.getElementById('dlLayer').innerHTML = `
     <div class="wi-ov">
       <div class="wi-box">
@@ -2459,6 +2460,7 @@ function initGame(worldId){
     </div>`;
     document.getElementById('btnStartWorld').onclick = ()=>{
       document.getElementById('dlLayer').innerHTML = '';
+      showTc();
       launchPhaser(worldId);
     };
   } else {
@@ -2895,6 +2897,7 @@ function triggerNPC(def, npc){
 function triggerCritic(def){
   if(evActive){ criticActive=false; criticSpawned=false; return; } // bail if busy
   evActive = true;
+  hideTc();
   curEv    = {...def, isCritic:true};
   player?.setVelocity(0,0);
   const flash = document.createElement('div');
@@ -2942,6 +2945,7 @@ function handleChoice(def, out){
 }
 
 function showDebrief(def, res){
+  hideTc();
   const db = def.db;
   const pills = Object.entries(res.stat).map(([k,v])=>{
     const col = v<0 ? '#f76a6a' : SC[k];
