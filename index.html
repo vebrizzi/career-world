@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Career World</title>
+<title>Career World · alpha 1.0.34</title>
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;700&display=swap" rel="stylesheet">
 <style>
 :root{
@@ -95,14 +95,16 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;heigh
   .c-left{max-width:100%!important;width:100%!important;flex:none!important;order:2}
   .c-right{max-width:100%!important;width:100%!important;flex:none!important;order:1}
   .dnd-card{max-width:320px;margin:0 auto}
-  .card-swipe-hint{display:flex;justify-content:center;padding:.75rem 0 .25rem;
-    font-family:'Space Mono',monospace;font-size:.58rem;color:var(--muted);
+  .card-swipe-hint{display:flex;justify-content:center;align-items:center;
+    gap:.4rem;padding:.75rem 0 .5rem;
+    font-family:'Space Mono',monospace;font-size:.6rem;color:var(--accent3);
     animation:bouncedown 1.4s ease-in-out infinite}
 }
 @keyframes bouncedown{
   0%,100%{transform:translateY(0);opacity:.5}
   50%{transform:translateY(4px);opacity:1}
 }
+.card-swipe-hint{display:none}
 .c-left{max-width:340px;flex:1;display:flex;flex-direction:column;gap:1rem}
 .c-eyebrow{font-family:'Space Mono',monospace;font-size:.52rem;color:var(--muted);letter-spacing:.2em;text-transform:uppercase}
 .c-headline{font-size:clamp(1.25rem,3vw,1.85rem);font-weight:700;line-height:1.2}
@@ -162,9 +164,9 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;heigh
   .g-msg{display:none}
   /* push game area up so canvas isn't under the fixed bar */
   #s-game{padding-bottom:80px}
-  /* dialog overlay: stop at top of tc bar */
-  .dl-ov{bottom:80px;overflow-y:hidden}
-  .dl-box{max-height:calc(100vh - 160px) !important;max-height:calc(100dvh - 160px) !important}
+  /* dialog overlay covers full screen including tc bar area */
+  .dl-ov{bottom:0;z-index:300;overflow-y:auto}
+  .dl-box{max-height:calc(100dvh - 80px);max-height:calc(100vh - 80px);margin-bottom:80px}
 }
 .tc-l{display:flex;gap:.4rem;pointer-events:all}
 .tc-r{pointer-events:all}
@@ -174,7 +176,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;heigh
 .tc-jump.pressed{background:rgba(106,247,200,.4)}
 
 /* dialog */
-.dl-ov{position:absolute;inset:0;background:rgba(0,0,0,.72);display:flex;align-items:flex-end;justify-content:center;padding:.75rem;z-index:50;animation:fadein .2s;overflow-y:auto}
+.dl-ov{position:fixed;inset:0;background:rgba(0,0,0,.72);display:flex;align-items:flex-end;justify-content:center;padding:.75rem;z-index:300;animation:fadein .2s;overflow-y:auto}
 @keyframes fadein{from{opacity:0}}
 .dl-box{width:100%;max-width:640px;background:var(--surface);border:1.5px solid var(--accent);border-radius:12px;padding:1.3rem;box-shadow:0 0 40px rgba(124,106,247,.18);animation:slideup .25s cubic-bezier(.22,1,.36,1);max-height:80vh;overflow-y:auto;box-sizing:border-box}
 @keyframes slideup{from{transform:translateY(18px);opacity:0}}
@@ -312,6 +314,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;heigh
 <div id="s-title" class="scr on">
   <div class="stars" id="stars"></div>
   <div class="t-pixel">CAREER<br>WORLD</div>
+  <div style="font-family:'Space Mono',monospace;font-size:.45rem;color:var(--muted);margin-bottom:.5rem;letter-spacing:.15em">ALPHA 1.0.34</div>
   <div class="t-sub">// navigare il mercato tech con consapevolezza</div>
   <div class="t-desc">Un gioco per esplorare il mondo del lavoro.<br>Scopri la tua classe — poi naviga il campo.<br><strong>Nessun game over. Solo conoscenza.</strong></div>
   <button class="btn-start" id="btnStart">[ INIZIA ]</button>
@@ -341,7 +344,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;heigh
   <div class="c-right">
     <div class="dnd-card" id="dndCard"></div>
     <div class="card-swipe-hint" id="cardSwipeHint">
-      <span>↓ scorri per continuare</span>
+      <span>↓ scorri per vedere il bottone</span>
     </div>
   </div>
 </div>
@@ -2907,8 +2910,14 @@ function triggerCritic(def){
 }
 
 // ── Dialogs ─────────────────────────────
-function hideTc(){ const t=document.getElementById('tc'); if(t) t.style.visibility='hidden'; }
-function showTc(){ const t=document.getElementById('tc'); if(t) t.style.visibility=''; }
+function hideTc(){
+  const t=document.getElementById('tc');
+  if(t){ t.style.zIndex='-1'; t.style.pointerEvents='none'; t.style.opacity='0'; }
+}
+function showTc(){
+  const t=document.getElementById('tc');
+  if(t){ t.style.zIndex=''; t.style.pointerEvents=''; t.style.opacity=''; }
+}
 
 function showDialog(def){
   hideTc();
