@@ -21,7 +21,7 @@ body.in-assess{overflow:hidden;touch-action:auto} /* assess handles its own scro
 body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text)}
 body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.08) 2px,rgba(0,0,0,.08) 4px);pointer-events:none;z-index:9000}
 #gc{width:100vw;height:100vh;overflow:hidden;position:relative}
-.scr{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem;overflow-y:auto;opacity:0;transform:translateY(14px);transition:opacity .35s,transform .35s;pointer-events:none}
+.scr{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem;overflow-y:auto;-webkit-overflow-scrolling:touch;opacity:0;transform:translateY(14px);transition:opacity .35s,transform .35s;pointer-events:none}
 .scr.on{opacity:1;transform:none;pointer-events:all}
 
 /* ── TITLE ── */
@@ -88,6 +88,14 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;heigh
 
 /* ── CARD ── */
 #s-card{background:radial-gradient(ellipse at 30% 50%,#1a1040 0%,var(--bg) 60%);flex-direction:row;gap:3rem;flex-wrap:wrap;justify-content:center;align-items:center}
+@media(max-width:600px){
+  #s-card{flex-direction:column!important;padding:.75rem .75rem 2rem!important;
+          align-items:stretch!important;justify-content:flex-start!important;
+          overflow-y:auto!important;gap:1rem!important}
+  .c-left{max-width:100%!important;width:100%!important;flex:none!important;order:2}
+  .c-right{max-width:100%!important;width:100%!important;flex:none!important;order:1}
+  .dnd-card{max-width:320px;margin:0 auto}
+}
 .c-left{max-width:340px;flex:1;display:flex;flex-direction:column;gap:1rem}
 .c-eyebrow{font-family:'Space Mono',monospace;font-size:.52rem;color:var(--muted);letter-spacing:.2em;text-transform:uppercase}
 .c-headline{font-size:clamp(1.25rem,3vw,1.85rem);font-weight:700;line-height:1.2}
@@ -148,9 +156,8 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;heigh
   /* push game area up so canvas isn't under the fixed bar */
   #s-game{padding-bottom:80px}
   /* dialog overlay: stop at top of tc bar */
-  .dl-ov{bottom:80px;overflow-y:auto}
-  /* dialog box: smaller max-height so it never overflows the reduced area */
-  .dl-box{max-height:calc(100vh - 100px) !important}
+  .dl-ov{bottom:80px;overflow-y:hidden}
+  .dl-box{max-height:calc(100vh - 160px) !important;max-height:calc(100dvh - 160px) !important}
 }
 .tc-l{display:flex;gap:.4rem;pointer-events:all}
 .tc-r{pointer-events:all}
@@ -286,11 +293,6 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;heigh
 .wi-hint kbd{background:rgba(106,247,200,.15);border:1px solid rgba(106,247,200,.3);border-radius:3px;padding:.05rem .3rem;font-family:'Space Mono',monospace;font-size:.72rem}
 
 @media(max-width:600px){
-  #s-card{flex-direction:column!important;padding:.75rem!important;
-          align-items:center!important;justify-content:flex-start!important;
-          overflow-y:auto!important}
-  .c-left,.c-right{max-width:100%!important;width:100%!important}
-  .c-right{margin-bottom:1rem}
   .g-hud{padding:.3rem .65rem;gap:.5rem}
   .g-world{display:none}
 }
@@ -570,6 +572,9 @@ function renderAssess(){
   html+=`<div class="a-footer"><div class="a-note">${step.note}</div>
   <button class="btn-next" id="btnNA">${isLast?'Genera la mia Card →':'Avanti →'}</button></div>`;
   document.getElementById('aMain').innerHTML=html;
+  // Always scroll to top when rendering a new step
+  const aMain = document.getElementById('aMain');
+  if(aMain) aMain.scrollTop = 0;
   document.querySelectorAll('.bq-opt').forEach(b=>{
     b.addEventListener('click',()=>{
       const{qid,step,v}=b.dataset;
