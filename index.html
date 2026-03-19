@@ -147,6 +147,10 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;heigh
   .g-msg{display:none}
   /* push game area up so canvas isn't under the fixed bar */
   #s-game{padding-bottom:80px}
+  /* dialog overlay: stop at top of tc bar */
+  .dl-ov{bottom:80px;overflow-y:auto}
+  /* dialog box: smaller max-height so it never overflows the reduced area */
+  .dl-box{max-height:calc(100vh - 100px) !important}
 }
 .tc-l{display:flex;gap:.4rem;pointer-events:all}
 .tc-r{pointer-events:all}
@@ -161,8 +165,8 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;heigh
 .dl-box{width:100%;max-width:640px;background:var(--surface);border:1.5px solid var(--accent);border-radius:12px;padding:1.3rem;box-shadow:0 0 40px rgba(124,106,247,.18);animation:slideup .25s cubic-bezier(.22,1,.36,1);max-height:88vh;overflow-y:auto;box-sizing:border-box}
 @keyframes slideup{from{transform:translateY(18px);opacity:0}}
 @media(max-width:640px){
-  .dl-ov{align-items:flex-start;padding-top:max(.5rem,env(safe-area-inset-top))}
-  .dl-box{max-height:96vh;border-radius:10px;padding:.9rem;font-size:.9rem}
+  .dl-ov{align-items:flex-start;padding:.5rem;padding-top:max(.5rem,env(safe-area-inset-top))}
+  .dl-box{max-height:80vh;border-radius:10px;padding:.9rem}
   .dl-txt{font-size:.82rem;line-height:1.6}
   .ch-btn{font-size:.76rem;padding:.52rem .7rem}
 }
@@ -281,8 +285,11 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;heigh
 .wi-hint kbd{background:rgba(106,247,200,.15);border:1px solid rgba(106,247,200,.3);border-radius:3px;padding:.05rem .3rem;font-family:'Space Mono',monospace;font-size:.72rem}
 
 @media(max-width:600px){
-  #s-card{flex-direction:column!important;padding:1.1rem!important}
-  .c-left,.c-right{max-width:100%!important}
+  #s-card{flex-direction:column!important;padding:.75rem!important;
+          align-items:center!important;justify-content:flex-start!important;
+          overflow-y:auto!important}
+  .c-left,.c-right{max-width:100%!important;width:100%!important}
+  .c-right{margin-bottom:1rem}
   .g-hud{padding:.3rem .65rem;gap:.5rem}
   .g-world{display:none}
 }
