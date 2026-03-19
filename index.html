@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Career World · alpha 1.0.34</title>
+<title>Career World · alpha 1.0.35</title>
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;700&display=swap" rel="stylesheet">
 <style>
 :root{
@@ -88,6 +88,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;heigh
 
 /* ── CARD ── */
 #s-card{background:radial-gradient(ellipse at 30% 50%,#1a1040 0%,var(--bg) 60%);flex-direction:row;gap:3rem;flex-wrap:wrap;justify-content:center;align-items:center}
+.card-swipe-hint{display:none}
 @media(max-width:600px){
   #s-card{flex-direction:column!important;padding:.75rem .75rem 2rem!important;
           align-items:stretch!important;justify-content:flex-start!important;
@@ -104,7 +105,6 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;heigh
   0%,100%{transform:translateY(0);opacity:.5}
   50%{transform:translateY(4px);opacity:1}
 }
-.card-swipe-hint{display:none}
 .c-left{max-width:340px;flex:1;display:flex;flex-direction:column;gap:1rem}
 .c-eyebrow{font-family:'Space Mono',monospace;font-size:.52rem;color:var(--muted);letter-spacing:.2em;text-transform:uppercase}
 .c-headline{font-size:clamp(1.25rem,3vw,1.85rem);font-weight:700;line-height:1.2}
