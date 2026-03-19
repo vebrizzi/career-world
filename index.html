@@ -136,11 +136,17 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;heigh
 .g-area canvas{display:block;width:100%;image-rendering:pixelated;flex-shrink:0}
 .g-msg{position:absolute;bottom:0;left:0;right:0;background:rgba(9,9,15,.92);border-top:1px solid var(--border);padding:.5rem 1.1rem;font-family:'Space Mono',monospace;font-size:.62rem;color:var(--accent3);min-height:38px;display:flex;align-items:center;z-index:20}
 
-/* touch controls — fixed bar below canvas, never overlaps */
-#tc{display:none;pointer-events:none;background:rgba(9,9,15,.95);border-top:1px solid var(--border);padding:.45rem .8rem .55rem;flex-shrink:0;width:100%;box-sizing:border-box}
+/* touch controls — position:fixed so always at bottom, never clipped */
+#tc{display:none;pointer-events:none}
 @media(hover:none),(max-width:600px){
-  #tc{display:flex;justify-content:space-between;align-items:center}
-  .g-msg{display:none} /* msg bar hidden on mobile — space used by controls */
+  #tc{display:flex;justify-content:space-between;align-items:center;
+      position:fixed;bottom:0;left:0;right:0;z-index:200;
+      background:rgba(9,9,15,.97);border-top:1px solid var(--border);
+      padding:.4rem .8rem calc(.4rem + env(safe-area-inset-bottom,.3rem));
+      pointer-events:all}
+  .g-msg{display:none}
+  /* push game area up so canvas isn't under the fixed bar */
+  #s-game{padding-bottom:80px}
 }
 .tc-l{display:flex;gap:.4rem;pointer-events:all}
 .tc-r{pointer-events:all}
@@ -748,7 +754,7 @@ function updHUD(){
 const WORLD_DEFS={
   pmi:{
     label:'WORLD 1 · PMI SETTORE',
-    palette:{floor:0x1a1a2e,wall:0x2a2a4e,accent:0x3a4a6a,bg:0x0d0e1a},
+    palette:{floor:0x1e1608,wall:0x2e2210,accent:0x5a3a10,bg:0x0e0a04},
     // exits: after all NPCs visited, 2 doors appear
     exits:[
       {id:'startup',label:'STARTUP →',color:0xce93d8,x:0.85,y:0.5},
@@ -920,7 +926,7 @@ const WORLD_DEFS={
 
   consulenza:{
     label:'WORLD 2B · BIG CONSULENZA',
-    palette:{floor:0x0a1a2e,wall:0x1a2a4e,accent:0x2a4a7a,bg:0x080d14},
+    palette:{floor:0x081820,wall:0x103040,accent:0x1a5060,bg:0x040c10},
     exits:[{id:'end_consulenza',label:'FINE →',color:0x4fc3f7,x:0.88,y:0.5}],
     npcs:[
       {
@@ -1301,13 +1307,13 @@ const W4_NPCS = [
 const WORLD_DEFS_NEW = {
   corporate:{
     label:'WORLD 3 · LARGE CORPORATE',
-    palette:{floor:0x0f1a2e,wall:0x1a2a4e,accent:0x2a4a7a,bg:0x080d16},
+    palette:{floor:0x0a1810,wall:0x142a18,accent:0x1e4a28,bg:0x050e08},
     exits:[{id:'piva',label:'P.IVA / FOUNDER →',color:0x6af7c8,x:0.88,y:0.55}],
     npcs: W3_NPCS,
   },
   piva:{
     label:'WORLD 4 · P.IVA & FOUNDER',
-    palette:{floor:0x0f2010,wall:0x1a3520,accent:0x2a5530,bg:0x060e08},
+    palette:{floor:0x081e18,wall:0x103028,accent:0x185040,bg:0x040f0c},
     exits:[{id:'end_piva',label:'FINE →',color:0x6af7c8,x:0.88,y:0.55}],
     npcs: W4_NPCS,
   },
@@ -3057,11 +3063,11 @@ function showWorldDebrief(){
       <div style="display:flex;gap:.6rem;justify-content:center;flex-wrap:wrap;padding-top:.4rem">
         <button class="btn-next" id="btnBackMap"
           style="background:${color}33;border:1px solid ${color}66;color:${color}">
-          ← Mappa
+          🗺️ Torna alla mappa
         </button>
-        <button class="btn-next" id="btnViewOutcome"
-          style="background:#1a1a2e;border:1px solid #3a3a5a;color:var(--muted);font-size:.55rem">
-          📊 Riepilogo completo
+        <button class="btn-next" id="btnTryOther"
+          style="background:#1a1a2e;border:1px solid #3a3a5a;color:var(--muted);font-size:.6rem">
+          ↩ Prova un percorso diverso
         </button>
       </div>
 
@@ -3073,10 +3079,13 @@ function showWorldDebrief(){
     exitTriggered=false; evActive=false;
     show('map'); renderMap();
   };
-  document.getElementById('btnViewOutcome').onclick = ()=>{
+  document.getElementById('btnTryOther').onclick = ()=>{
+    // Reset current world and go back to map to pick a different one
     document.getElementById('dlLayer').innerHTML='';
     exitTriggered=false; evActive=false;
-    show('outcome'); renderOutcome();
+    // Remove last world from history so it can be replayed
+    ST.worldHistory = ST.worldHistory.filter(id=>id!==ST.world.id);
+    show('map'); renderMap();
   };
 }
 
@@ -3110,16 +3119,20 @@ function setMsg(t){ const el=document.getElementById('gMsg'); if(el) el.textCont
 // OUTCOME
 // ══════════════════════════════════════
 function renderOutcome(){
-  const cls  = CLASSES[ST.char.cls];
-  const gs   = ST.gs;
-  const init = ST.char.stats;
+  // GLOBAL CAREER REPORT — aggregates all visited worlds
+  const cls     = CLASSES[ST.char.cls];
+  const gs      = ST.gs;
+  const init    = ST.char.stats;
+  const visited = ST.worldHistory;
 
+  // Stat summary
   const statPills = Object.entries(gs).map(([k,v])=>{
     const d    = v-(init[k]||0);
     const dstr = d>0?` (+${d})`:d<0?` (${d})`:'';
     return `<span class="st-pill" style="color:${SC[k]};border-color:${SC[k]}">${k} ${v}${dstr}</span>`;
   }).join('');
 
+  // All patterns across all visited worlds
   const allPatterns = [...new Set(ST.world.patterns)];
   const patHtml = allPatterns.length>0
     ? allPatterns.map(p=>`
@@ -3127,32 +3140,67 @@ function renderOutcome(){
           <span class="oc-tag" style="background:rgba(106,247,200,.1);color:#6af7c8;border:1px solid rgba(106,247,200,.3)">✓</span>
           <span>${p}</span>
         </div>`).join('')
-    : '<div style="color:#6868a8;font-size:.78rem">Esplora tutti gli NPC per riconoscere i pattern.</div>';
+    : '<div style="color:#6868a8;font-size:.78rem">Esplora più NPC in ogni mondo per riconoscere i pattern.</div>';
 
+  // Worlds visited summary
+  const worldsHtml = visited.length ? visited.map(wid=>{
+    const wi = WORLD_INTROS[wid]||{emoji:'🌐',title:wid,color:'#6af7c8'};
+    const db = WORLD_DEBRIEF[wid];
+    const npcsInWorld = WORLD_DEFS[wid]?.npcs?.length||0;
+    const visitedInWorld = ST.world.id===wid ? ST.world.visited.length : '?';
+    return `<div class="oc-row" style="align-items:center">
+      <span style="font-size:1.1rem">${wi.emoji}</span>
+      <div style="flex:1">
+        <span style="color:${wi.color};font-family:'Space Mono',monospace;font-size:.6rem">${wi.title}</span>
+        ${db?.levels ? `<span style="font-size:.58rem;color:var(--muted);margin-left:.4rem">${db.theme}</span>` : ''}
+      </div>
+      <span style="font-size:.58rem;color:#6af7c8">✓</span>
+    </div>`;
+  }).join('') : '<div style="color:var(--muted);font-size:.75rem">Nessun mondo completato.</div>';
+
+  // RADAR reading
   const radarGain = gs.RADAR-(init.RADAR||3);
-  const radarTxt  = radarGain>=8
-    ? 'RADAR molto alto: riesci a leggere il sistema con chiarezza.'
-    : radarGain>=4
-    ? 'RADAR in crescita: hai iniziato a vedere i meccanismi.'
-    : 'RADAR basso: torna a esplorare tutti gli NPC per costruire la tua lettura del sistema.';
+  const radarTxt  = radarGain>=20
+    ? 'RADAR eccezionale: hai sviluppato una lettura sistemica del mercato.'
+    : radarGain>=12
+    ? 'RADAR molto alto: riesci a leggere le dinamiche di potere con chiarezza.'
+    : radarGain>=6
+    ? 'RADAR in crescita: stai costruendo la tua mappa del sistema.'
+    : 'RADAR base: esplora più mondi e più NPC per approfondire la lettura.';
 
-  const worldLabel = ST.worldPath==='startup' ? 'Startup Tech' : 'Big Consulenza';
-  const pathNote   = ST.worldPath==='startup'
-    ? `Come ${cls.name} in una Startup hai trovato velocità e autonomia — ma anche confini assenti e credit gap elevato.`
-    : `Come ${cls.name} in una Big Consulenza hai trovato struttura e visibilità — ma anche criteri impliciti e double bind.`;
+  // Global takeaway based on worlds visited
+  const hasStartup = visited.includes('startup');
+  const hasCorporate = visited.includes('corporate');
+  const hasPiva = visited.includes('piva');
+  const globalTakeaway = hasPiva
+    ? 'Hai esplorato sia ambienti strutturati che il lavoro autonomo. La tua lettura del mercato è tra le più complete — sai cosa offre ogni contesto e a quale prezzo.'
+    : hasCorporate
+    ? 'Hai attraversato la progressione da piccolo a grande. Sai come cambiano le dinamiche di potere con la scala dell'organizzazione.'
+    : hasStartup
+    ? 'Hai visto come le startup e le PMI condividono l'informalità ma differiscono nel ritmo e nell'ambizione. La tua prossima frontiera è esplorare i contesti più strutturati.'
+    : 'Hai iniziato il percorso. Ogni mondo che esplorerai aggiungerà strati alla tua lettura del mercato.';
 
   document.getElementById('s-outcome').innerHTML = `
-    <div class="oc-em">🏁</div>
-    <div class="oc-title">PERCORSO COMPLETATO<br>PMI → ${worldLabel.toUpperCase()}</div>
-    <div class="oc-desc">Hai navigato 2 mondi come <strong>${cls.name}</strong>.<br>
-    Ogni scelta ha costruito la tua mappa — non come giudizio, ma come informazione.</div>
-    <div class="oc-card"><div class="oc-card-title">// STAT FINALI</div>
-    <div class="st-pills">${statPills}</div></div>
-    <div class="oc-card"><div class="oc-card-title">// PATTERN RICONOSCIUTI</div>
-    <div class="oc-rows">${patHtml}</div></div>
+    <div class="oc-em">🗺️</div>
+    <div class="oc-title">REPORT DI CARRIERA</div>
+    <div class="oc-desc">
+      Profilo: <strong>${cls.av} ${cls.name}</strong> · ${visited.length} mondo/i esplorato/i
+    </div>
+    <div class="oc-card">
+      <div class="oc-card-title">// MONDI VISITATI</div>
+      <div class="oc-rows" style="margin-top:.5rem">${worldsHtml}</div>
+    </div>
+    <div class="oc-card">
+      <div class="oc-card-title">// STAT ACCUMULATE</div>
+      <div class="st-pills" style="margin-top:.4rem">${statPills}</div>
+      <div style="font-size:.7rem;color:var(--muted);margin-top:.5rem">${radarTxt}</div>
+    </div>
+    <div class="oc-card">
+      <div class="oc-card-title">// PATTERN RICONOSCIUTI (${allPatterns.length})</div>
+      <div class="oc-rows" style="margin-top:.4rem">${patHtml}</div>
+    </div>
     <div class="oc-take">
-      <strong>${radarTxt}</strong><br><br>
-      ${pathNote}<br><br>
+      ${globalTakeaway}<br><br>
       <em>Una cosa da portare fuori dal gioco:</em> il mercato non è neutro.
       Ha strutture, bias e pattern ricorrenti. Conoscerli non significa accettarli —
       significa scegliere consapevolmente quando adattarsi, quando resistere, e quando cambiare ambiente.
@@ -3272,10 +3320,21 @@ function renderMap(){
     </foreignObject>`;
   }).join('');
 
+  const canConclude = done.length >= 2;
+  const concludeBtn = canConclude ? `
+    <button class="btn-next" id="btnConclude"
+      style="background:rgba(106,247,200,.12);border:1px solid rgba(106,247,200,.3);color:#6af7c8;font-size:.58rem;align-self:center">
+      🏁 Concludi il percorso — vedi il report completo
+    </button>` : `
+    <div style="font-family:'Space Mono',monospace;font-size:.55rem;color:var(--muted);text-align:center">
+      Completa almeno 2 mondi per sbloccare il report di carriera completo
+    </div>`;
+
   document.getElementById('mapWrap').innerHTML = `
     <div class="map-title">🗺️ CAREER WORLD MAP</div>
-    <div class="map-subtitle">Cinque mondi, tutti accessibili. Ogni lato connette contesti affini.</div>
+    <div class="map-subtitle">Sei mondi, tutti accessibili. Ogni lato connette contesti affini.</div>
     <div class="map-free-note">Inizia da dove vuoi — le linee mostrano affinità di pattern, non sequenze obbligatorie.</div>
+    ${concludeBtn}
     <div class="map-svg-wrap">
       <svg viewBox="0 0 ${VW} ${VH}" xmlns="http://www.w3.org/2000/svg">
         <defs>
@@ -3288,6 +3347,13 @@ function renderMap(){
         ${nodesSVG}
       </svg>
     </div>`;
+
+  // Conclude button
+  if(canConclude){
+    document.getElementById('btnConclude')?.addEventListener('click',()=>{
+      show('outcome'); renderOutcome();
+    });
+  }
 
   // Click handlers — all nodes clickable
   document.querySelectorAll('.mn-card').forEach(el=>{
