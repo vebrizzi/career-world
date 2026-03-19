@@ -95,6 +95,13 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;heigh
   .c-left{max-width:100%!important;width:100%!important;flex:none!important;order:2}
   .c-right{max-width:100%!important;width:100%!important;flex:none!important;order:1}
   .dnd-card{max-width:320px;margin:0 auto}
+  .card-swipe-hint{display:flex;justify-content:center;padding:.75rem 0 .25rem;
+    font-family:'Space Mono',monospace;font-size:.58rem;color:var(--muted);
+    animation:bouncedown 1.4s ease-in-out infinite}
+}
+@keyframes bouncedown{
+  0%,100%{transform:translateY(0);opacity:.5}
+  50%{transform:translateY(4px);opacity:1}
 }
 .c-left{max-width:340px;flex:1;display:flex;flex-direction:column;gap:1rem}
 .c-eyebrow{font-family:'Space Mono',monospace;font-size:.52rem;color:var(--muted);letter-spacing:.2em;text-transform:uppercase}
@@ -331,7 +338,12 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;heigh
     <div class="c-bias" id="biasNote"></div>
     <button class="btn-next" id="btnEnterGame" style="margin-top:.5rem;align-self:flex-start">Entra nel Mondo 1 →</button>
   </div>
-  <div class="c-right"><div class="dnd-card" id="dndCard"></div></div>
+  <div class="c-right">
+    <div class="dnd-card" id="dndCard"></div>
+    <div class="card-swipe-hint" id="cardSwipeHint">
+      <span>↓ scorri per continuare</span>
+    </div>
+  </div>
 </div>
 
 
@@ -640,6 +652,13 @@ function renderCard(){
     show('map');
     renderMap();
   };
+  // Hide swipe hint once user scrolls
+  const scardEl = document.getElementById('s-card');
+  const hint = document.getElementById('cardSwipeHint');
+  if(scardEl && hint){
+    const onScroll = ()=>{ hint.style.opacity='0'; scardEl.removeEventListener('scroll',onScroll); };
+    scardEl.addEventListener('scroll', onScroll, {passive:true});
+  }
 }
 
 // ══════════════════════════════════════
@@ -2885,7 +2904,11 @@ function triggerCritic(def){
 }
 
 // ── Dialogs ─────────────────────────────
+function hideTc(){ const t=document.getElementById('tc'); if(t) t.style.visibility='hidden'; }
+function showTc(){ const t=document.getElementById('tc'); if(t) t.style.visibility=''; }
+
 function showDialog(def){
+  hideTc();
   const d = def.dlg;
   const boxClass = def.id==='critic'||def.isCritic ? 'critic'
     : def.sprite==='sis' ? 'sister'
@@ -2945,6 +2968,7 @@ function showDebrief(def, res){
 }
 
 function closeDebrief(){
+  showTc();
   if(curEv){
     if(curEv.id==='critic'||curEv.isCritic){
       ST.world.patterns.push(curEv.db.pat);
@@ -2975,6 +2999,7 @@ function closeDebrief(){
 
 // ── Exit handling ───────────────────────
 function showWorldDebrief(){
+  hideTc();
   const wid    = ST.world.id;
   const wIntro = WORLD_INTROS[wid]||{emoji:'🏁',title:wid,color:'#6af7c8'};
   const npcs   = WORLD_DEFS[wid]?.npcs||[];
@@ -3090,15 +3115,13 @@ function showWorldDebrief(){
   document.getElementById('btnBackMap').onclick = ()=>{
     document.getElementById('dlLayer').innerHTML='';
     exitTriggered=false; evActive=false;
-    show('map'); renderMap();
+    showTc(); show('map'); renderMap();
   };
   document.getElementById('btnTryOther').onclick = ()=>{
-    // Reset current world and go back to map to pick a different one
     document.getElementById('dlLayer').innerHTML='';
     exitTriggered=false; evActive=false;
-    // Remove last world from history so it can be replayed
     ST.worldHistory = ST.worldHistory.filter(id=>id!==ST.world.id);
-    show('map'); renderMap();
+    showTc(); show('map'); renderMap();
   };
 }
 
