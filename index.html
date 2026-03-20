@@ -398,13 +398,13 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;heigh
 
 </div><!-- /#gc -->
 
-<!-- career-world-data.js deve essere caricato PRIMA di questo script -->
-<script src="career-world-data.js"></script>
+<!-- career-world_data.js deve essere caricato PRIMA di questo script -->
+<script src="career-world_data.js"></script>
 <script>
 
 // ══════════════════════════════════════════════════════════════
 // applyUITexts — popola tutti gli elementi HTML statici
-// da UI_TEXTS (definito in career-world-data.js).
+// da UI_TEXTS (definito in career-world_data.js).
 // Chiamato una sola volta al DOMContentLoaded.
 // ══════════════════════════════════════════════════════════════
 function applyUITexts(){
@@ -735,7 +735,7 @@ function updHUD(){
 }
 
 // ══════════════════════════════════════
-// WORLD DEFS (già in career-world-data.js)
+// WORLD DEFS (già in career-world_data.js)
 // ══════════════════════════════════════
 
 // ══════════════════════════════════════
@@ -765,9 +765,12 @@ function getCanvasDims(){
   const hud=document.getElementById('gHud');
   const hudH=hud?hud.offsetHeight:44;
   const MSG_H=40;
-  const W=window.innerWidth;
+  const isMobile=('ontouchstart' in window)||navigator.maxTouchPoints>0||window.innerWidth<=600;
+  // Desktop: stanza più piccola con margini laterali
+  const SIDE_PAD = isMobile ? 0 : Math.max(0, Math.floor((window.innerWidth - 900) / 2));
+  const W=Math.min(window.innerWidth - SIDE_PAD*2, isMobile ? window.innerWidth : 900);
   const H=Math.max(window.innerHeight-hudH-MSG_H,200);
-  return{W:Math.floor(W),H:Math.floor(H)};
+  return{W:Math.floor(W),H:Math.floor(H),sidePad:SIDE_PAD};
 }
 
 function initGame(worldId){
@@ -820,10 +823,11 @@ function launchPhaser(worldId){
   document.getElementById('gArea').querySelectorAll('canvas').forEach(c=>c.remove());
   setTimeout(()=>{
     const cont=document.getElementById('gArea');
-    const{W,H}=getCanvasDims();
+    const dims=getCanvasDims();const{W,H}=dims;
     const cv=document.createElement('canvas');
     cv.id='gameCanvas';cv.width=W;cv.height=H;
-    cv.style.cssText=`display:block;width:${W}px;height:${H}px;image-rendering:pixelated;flex-shrink:0;`;
+    const _sp=dims.sidePad||0;
+    cv.style.cssText=`display:block;width:${W}px;height:${H}px;image-rendering:pixelated;flex-shrink:0;margin:0 auto;${_sp>0?`box-shadow:0 0 0 ${_sp}px var(--bg);outline:2px solid var(--border);`:''}`;
     const msgEl=document.getElementById('gMsg');
     if(msgEl)cont.insertBefore(cv,msgEl);else cont.appendChild(cv);
     PG=new Phaser.Game({
@@ -996,25 +1000,101 @@ function gPreload(){
   g.fillStyle(0xffffff,0.5);g.fillRect(12,16,2,2);g.fillRect(17,16,2,2); // denti
   g.generateTexture('crit',32,32);g.clear();
 
-  // ── TECH — sfida tecnica, laptop persona ──────────────────
-  g.fillStyle(0xffe0b2);g.fillCircle(16,8,7);
-  g.fillStyle(0x1565c0);g.fillRect(9,4,14,5);            // capelli blu tech
-  g.fillStyle(0x000000);g.fillCircle(13,8,1.5);
-  g.fillStyle(0x000000);g.fillCircle(19,8,1.5);
-  g.fillStyle(0x00e5ff);g.fillRect(8,16,16,10);          // hoodie ciano
-  g.fillStyle(0x006064);g.fillRect(13,16,6,10);          // tasca centrale
-  g.fillStyle(0xffe0b2);g.fillRect(4,17,5,8);
-  g.fillStyle(0xffe0b2);g.fillRect(23,17,5,8);
-  g.fillStyle(0x00e5ff);g.fillRect(4,16,5,4);
-  g.fillStyle(0x00e5ff);g.fillRect(23,16,5,4);
-  // laptop in mano
-  g.fillStyle(0x37474f);g.fillRect(1,22,8,5);
-  g.fillStyle(0x4fc3f7,0.8);g.fillRect(2,23,6,3);
-  g.fillStyle(0x00ff88);g.fillRect(3,24,2,1);g.fillRect(3,25,4,1);
-  g.fillStyle(0x263238);g.fillRect(9,27,14,5);
-  g.fillStyle(0x111111);g.fillRect(9,30,6,3);
-  g.fillStyle(0x111111);g.fillRect(17,30,6,3);
-  g.generateTexture('tech',32,34);g.clear();
+  // ── TECH — scrivania con stack di schermi ────────────────
+  // Scrivania
+  g.fillStyle(0x3e2723);g.fillRect(2,22,36,4);           // piano scrivania
+  g.fillStyle(0x4e342e);g.fillRect(2,22,36,2);           // bordo top scrivania
+  g.fillStyle(0x3e2723);g.fillRect(4,26,4,8);            // gamba sx
+  g.fillStyle(0x3e2723);g.fillRect(32,26,4,8);           // gamba dx
+  // Monitor grande (centro)
+  g.fillStyle(0x1a1a2a);g.fillRect(11,6,18,14);          // cornice monitor
+  g.fillStyle(0x0d1117);g.fillRect(12,7,16,12);          // schermo
+  g.fillStyle(0x00ff88,0.9);g.fillRect(13,8,3,2);        // riga codice 1
+  g.fillStyle(0x4fc3f7,0.8);g.fillRect(13,11,10,1);      // riga codice 2
+  g.fillStyle(0xf7c46a,0.8);g.fillRect(13,13,7,1);       // riga codice 3
+  g.fillStyle(0xff6b9d,0.8);g.fillRect(13,15,5,1);       // riga codice 4
+  g.fillStyle(0xffffff,0.4);g.fillRect(24,8,1,4);        // cursore
+  g.fillStyle(0x37474f);g.fillRect(18,20,4,2);           // collo monitor
+  g.fillStyle(0x455a64);g.fillRect(15,22,10,1);          // base monitor
+  // Monitor piccolo (sx)
+  g.fillStyle(0x1a1a2a);g.fillRect(1,10,9,11);
+  g.fillStyle(0x0d1117);g.fillRect(2,11,7,9);
+  g.fillStyle(0x4fc3f7,0.6);g.fillRect(3,12,5,1);
+  g.fillStyle(0x00ff88,0.6);g.fillRect(3,14,3,1);
+  g.fillStyle(0x37474f);g.fillRect(4,21,2,1);
+  g.fillStyle(0x455a64);g.fillRect(3,22,4,1);
+  // Tastiera
+  g.fillStyle(0x263238);g.fillRect(10,20,20,2);
+  g.fillStyle(0x37474f);g.fillRect(11,20,1,1);g.fillRect(13,20,1,1);g.fillRect(15,20,1,1);
+  g.fillStyle(0x37474f);g.fillRect(17,20,1,1);g.fillRect(19,20,1,1);g.fillRect(21,20,1,1);
+  // Lucina power verde
+  g.fillStyle(0x00e676);g.fillCircle(27,21,1);
+  g.generateTexture('tech',40,34);g.clear();
+
+  // ── FURNITURE textures (solo desktop) ────────────────────
+  // factory_machine — macchinario industriale PMI
+  g.fillStyle(0x37474f);g.fillRect(2,2,36,32);           // corpo macchina
+  g.fillStyle(0x546e7a);g.fillRect(4,4,32,8);            // pannello controllo
+  g.fillStyle(0xff1744);g.fillCircle(8,8,3);             // bottone rosso
+  g.fillStyle(0x00e676);g.fillCircle(16,8,3);            // bottone verde
+  g.fillStyle(0xffd700);g.fillCircle(24,8,2);            // led giallo
+  g.fillStyle(0x263238);g.fillRect(4,14,32,4);           // slot input
+  g.fillStyle(0x1a1a2a,0.8);g.fillRect(5,15,30,2);
+  g.fillStyle(0x78909c);g.fillRect(6,20,28,8);           // corpo centrale
+  g.fillStyle(0x546e7a);g.fillRect(8,22,8,4);            // dettaglio sx
+  g.fillStyle(0x546e7a);g.fillRect(24,22,8,4);           // dettaglio dx
+  g.fillStyle(0xb0bec5);g.fillRect(10,30,20,4);          // base
+  g.generateTexture('furn_factory',40,36);g.clear();
+
+  // startup_plant — pianta in vaso open space
+  g.fillStyle(0x5d4037);g.fillRect(14,26,12,10);         // vaso
+  g.fillStyle(0x795548);g.fillRect(12,24,16,4);          // bordo vaso
+  g.fillStyle(0x2e7d32);g.fillCircle(20,18,8);           // foglie
+  g.fillStyle(0x388e3c);g.fillCircle(14,15,6);
+  g.fillStyle(0x388e3c);g.fillCircle(26,15,6);
+  g.fillStyle(0x43a047);g.fillCircle(20,10,5);
+  g.fillStyle(0x66bb6a);g.fillCircle(15,12,3);           // highlight
+  g.generateTexture('furn_plant',40,36);g.clear();
+
+  // startup_sofa — divano open space startup
+  g.fillStyle(0x7b1fa2);g.fillRect(2,14,36,18);          // divano viola
+  g.fillStyle(0x9c27b0);g.fillRect(2,14,36,6);           // schienale
+  g.fillStyle(0x6a1b9a);g.fillRect(2,20,4,12);           // bracciolo sx
+  g.fillStyle(0x6a1b9a);g.fillRect(34,20,4,12);          // bracciolo dx
+  g.fillStyle(0x8e24aa);g.fillRect(6,22,12,8);           // cuscino sx
+  g.fillStyle(0x8e24aa);g.fillRect(22,22,12,8);          // cuscino dx
+  g.fillStyle(0x4a148c);g.fillRect(2,30,36,4);           // base
+  g.generateTexture('furn_sofa',40,36);g.clear();
+
+  // office_shelf — scaffale consulenza
+  g.fillStyle(0x5d4037);g.fillRect(2,2,36,34);           // struttura
+  g.fillStyle(0x4e342e);g.fillRect(2,2,36,2);            // top
+  g.fillStyle(0x795548);g.fillRect(2,12,36,2);           // ripiano 1
+  g.fillStyle(0x795548);g.fillRect(2,22,36,2);           // ripiano 2
+  // libri colorati ripiano 1
+  g.fillStyle(0x1565c0);g.fillRect(4,5,5,7);
+  g.fillStyle(0xb71c1c);g.fillRect(10,5,4,7);
+  g.fillStyle(0x1b5e20);g.fillRect(15,5,6,7);
+  g.fillStyle(0xe65100);g.fillRect(22,5,4,7);
+  g.fillStyle(0x4a148c);g.fillRect(27,5,5,7);
+  g.fillStyle(0xf9a825);g.fillRect(33,5,3,7);
+  // libri ripiano 2
+  g.fillStyle(0x006064);g.fillRect(4,15,4,7);
+  g.fillStyle(0x880e4f);g.fillRect(9,15,6,7);
+  g.fillStyle(0x37474f);g.fillRect(16,15,5,7);
+  g.fillStyle(0x33691e);g.fillRect(22,15,4,7);
+  g.fillStyle(0x4e342e);g.fillRect(27,15,8,7);
+  g.generateTexture('furn_shelf',40,36);g.clear();
+
+  // office_plant — ficus/pianta ufficio formale
+  g.fillStyle(0x5d4037);g.fillRect(16,28,8,8);           // vaso formale
+  g.fillStyle(0x6d4c41);g.fillRect(14,26,12,4);
+  g.fillStyle(0x1b5e20);g.fillCircle(20,20,8);           // albero
+  g.fillStyle(0x2e7d32);g.fillCircle(14,18,5);
+  g.fillStyle(0x2e7d32);g.fillCircle(26,18,5);
+  g.fillStyle(0x388e3c);g.fillCircle(20,13,5);
+  g.fillStyle(0x4caf50,0.6);g.fillCircle(18,16,3);
+  g.generateTexture('furn_office_plant',40,36);g.clear();
 
   // ── BUB — bolla esclamativa più carina ────────────────────
   g.fillStyle(0xffd700);g.fillCircle(12,11,10);          // bolla principale
@@ -1057,6 +1137,44 @@ function gCreate(){
       occupiedCells.add(`${c},${r}`);
     }
   });
+  // ── FURNITURE — solo desktop, per-mondo ─────────────────────
+  const _isMob=('ontouchstart' in window)||navigator.maxTouchPoints>0||W<=600;
+  if(!_isMob){
+    const wid=ST.world.id;
+    const _bg=layout.bg||'office';
+    const T2=TILE; // tile size alias
+    // Helper: piazza arredo decorativo (non bloccante, solo visivo)
+    const furn=(tx,col,row,key,sx=1,sy=1)=>{
+      if(col>0&&col<cols-1&&row>0&&row<rows-1&&!usedSlots.has(`${col},${row}`)){
+        const fi=scn.add.image(col*T2+T2/2,row*T2+T2/2,key);
+        fi.setDisplaySize(T2*sx,T2*sy);
+        fi.setDepth(-1);
+      }
+    };
+    if(_bg==='factory'){
+      // PMI: macchinari industriali agli angoli e lungo i muri
+      furn('furn_factory',2,3,'furn_factory');
+      furn('furn_factory',cols-3,2,'furn_factory');
+      furn('furn_factory',cols-3,rows-3,'furn_factory');
+      furn('furn_factory',2,rows-2,'furn_factory');
+      furn('furn_factory',Math.floor(cols/2),2,'furn_factory');
+    } else if(_bg==='startup'){
+      // Startup: divani, piante, energia
+      furn('furn_sofa',2,rows-3,'furn_sofa',2,1);
+      furn('furn_plant',cols-2,3,'furn_plant');
+      furn('furn_plant',2,rows-2,'furn_plant');
+      furn('furn_plant',cols-2,rows-2,'furn_plant');
+      furn('furn_plant',Math.floor(cols/2),rows-2,'furn_plant');
+    } else if(_bg==='office'){
+      // Consulenza: scaffali libri, piante formali
+      furn('furn_shelf',2,2,'furn_shelf');
+      furn('furn_shelf',cols-2,2,'furn_shelf');
+      furn('furn_shelf',2,Math.floor(rows/2),'furn_shelf');
+      furn('furn_office_plant',cols-2,rows-3,'furn_office_plant');
+      furn('furn_office_plant',cols-2,rows-2,'furn_office_plant');
+    }
+  }
+  // ─────────────────────────────────────────────────────────────
   player=this.physics.add.sprite(TILE*2+TILE/2,TILE*2+TILE/2,'player');
   player.setCollideWorldBounds(true);player.body.setSize(24,24);
   this.physics.add.collider(player,wallGroup);
