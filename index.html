@@ -245,7 +245,12 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;heigh
 .btn-replay:hover{background:rgba(106,247,200,.1)}
 
 /* ── WORLD MAP ── */
-#s-map{background:radial-gradient(ellipse at 50% 40%,#0a1428 0%,var(--bg) 70%);padding:1.5rem;overflow-y:auto;}
+/* .scr centra verticalmente con justify-content:center: se il contenuto
+   (titolo + note + 6 nodi mappa) supera l'altezza dello schermo, un
+   container flex centrato E scrollabile taglia simmetricamente sia l'inizio
+   che la fine invece di restare scrollabile fino agli estremi — stesso bug
+   già risolto per #s-game con questo stesso override (vedi sopra). */
+#s-map{background:radial-gradient(ellipse at 50% 40%,#0a1428 0%,var(--bg) 70%);padding:1.5rem;overflow-y:auto;justify-content:flex-start;}
 .map-wrap{width:100%;max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:1.25rem;align-items:center;}
 .map-title{font-family:'Press Start 2P',monospace;font-size:clamp(.55rem,1.4vw,.8rem);color:var(--accent);text-align:center;line-height:1.9;}
 .map-subtitle{font-family:'Space Mono',monospace;font-size:.62rem;color:var(--muted);text-align:center;}
