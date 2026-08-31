@@ -156,6 +156,13 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;heigh
   .g-hud{padding:.3rem .65rem;gap:.5rem}
   .g-world-label{font-size:.4rem}
   .g-seg{width:5px;height:6px}
+  /* Sotto i 600px g-hud-left + progress-panel (min-width 120px) + il
+     bottone job-change insieme non ci stanno più su una riga sola: senza
+     questa regola g-hud-center (l'unico figlio che può restringersi, via
+     min-width:0) veniva schiacciato a una fessura larga pochi px invece di
+     andare a capo, con mondo/statistiche illeggibili incollati a destra. */
+  .g-hud-center{flex-basis:100%}
+  .progress-panel{min-width:0}
 }
 .g-area{flex:1;position:relative;overflow:hidden;width:100%;min-height:200px;display:flex;flex-direction:column;justify-content:center}
 .g-area canvas{display:block;width:100%;image-rendering:pixelated;flex-shrink:0}
