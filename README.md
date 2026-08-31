@@ -10,31 +10,49 @@
 
 ```
 career-world/
-├── index.html              ← interfaccia, logica di gioco, motore Phaser
-├── career-world-data.js    ← tutti i contenuti: NPC, dialoghi, mondi, testi UI
-├── README.md               ← questo file
+├── index.html                  ← skeleton HTML + schermate statiche (title, entry, assess, ...)
+├── src/
+│   ├── main.js                 ← boot dell'app
+│   ├── data/career-world-data.js  ← tutti i contenuti: NPC, dialoghi, mondi, testi UI
+│   ├── game/
+│   │   ├── game.js             ← logica di gioco, motore Phaser
+│   │   └── npcVisibility.js    ← filtro NPC guest/autenticati
+│   └── auth/
+│       ├── supabaseClient.js   ← client Supabase + stato auth
+│       ├── authScreen.js       ← schermata login/signup/guest
+│       └── persistence.js      ← salvataggio/caricamento progresso
+├── supabase/migrations/        ← schema del DB (storico)
+├── README.md                   ← questo file
 └── CAREER_WORLD_DATA_GUIDE.md  ← guida per modificare i contenuti
 ```
 
-> **Regola d'oro**: non toccare `index.html` per modificare testi o contenuti. Tutto passa da `career-world-data.js`.
+> **Regola d'oro**: non toccare `index.html`/`game.js` per modificare testi o contenuti. Tutto passa da `src/data/career-world-data.js`.
 
 ---
 
 ## Come avviare
 
-Apri `index.html` direttamente in un browser **oppure** servi la cartella con un server locale:
+Il progetto usa [Vite](https://vitejs.dev/) + [Supabase](https://supabase.com/) (Postgres + Auth). Serve Node.js LTS installato ([nodejs.org](https://nodejs.org)).
 
 ```bash
-# Python
-python3 -m http.server 8080
+# 1. installa le dipendenze
+npm install
 
-# Node (npx)
-npx serve .
+# 2. copia il template delle variabili d'ambiente e compila i valori
+#    (URL e anon/publishable key del progetto Supabase — vedi dashboard Supabase → Project Settings → API)
+cp .env.local.example .env.local
+
+# 3. avvia il dev server
+npm run dev
 ```
 
-Poi vai su `http://localhost:8080`.
+Poi vai sull'URL stampato in console (di norma `http://localhost:5173`).
 
-> Non funziona aprendo `index.html` come file locale (`file://`) se il browser blocca i moduli ES — usa sempre un server locale.
+Altri script: `npm run build` (build di produzione in `dist/`), `npm run preview` (serve la build di produzione in locale).
+
+### Account e progresso
+
+Al primo avvio il gioco chiede di **accedere e riprendere** (email+password o magic link — l'avanzamento viene salvato su Supabase e recuperato ad ogni login) oppure di **giocare come guest** (nessun salvataggio, con avviso esplicito). Gli utenti autenticati vedono anche alcune interazioni NPC aggiuntive, marcate `authOnly:true` in `career-world-data.js` (vedi [CAREER_WORLD_DATA_GUIDE.md](./CAREER_WORLD_DATA_GUIDE.md)).
 
 ---
 
@@ -91,10 +109,12 @@ Dopo alcune interazioni, appare l'**Inner Critic** — una voce che riproduce il
 
 ## Tecnologie
 
-- **[Phaser 3](https://phaser.io/)** — motore di gioco browser (caricato da CDN)
-- **Vanilla JS** — nessun framework, nessun build step
+- **[Phaser 3](https://phaser.io/)** — motore di gioco browser (via npm)
+- **Vanilla JS** — nessun framework UI, moduli ES
+- **[Vite](https://vitejs.dev/)** — dev server e build
+- **[Supabase](https://supabase.com/)** — Postgres + Auth (email/password e magic link), chiamato direttamente dal frontend con Row Level Security; nessun backend custom
+- **[Vercel](https://vercel.com/)** — deploy
 - **Google Fonts** — Press Start 2P, Space Mono, DM Sans
-- Architettura: **single-file HTML + JS esterno** (no bundler, no npm)
 
 ---
 

@@ -1,6 +1,8 @@
-# 📖 Guida alla scrittura di `career-world-data.js`
+# 📖 Guida alla scrittura di `src/data/career-world-data.js`
 
-> Tutto quello che serve per aggiungere NPC, modificare testi, creare nuovi mondi e aggiornare l'interfaccia — senza toccare `index.html`.
+> Tutto quello che serve per aggiungere NPC, modificare testi, creare nuovi mondi e aggiornare l'interfaccia — senza toccare `index.html` o `src/game/game.js`.
+
+> Dal file si esporta tutto con `export const ...` (es. `export const WORLD_DEFS = {...}`) — è un modulo ES importato da `src/game/game.js`.
 
 ---
 
@@ -41,6 +43,7 @@ Ogni NPC è un oggetto JavaScript con questa forma:
   label: 'Ufficio HR',         // testo mostrato sopra l'NPC nel gioco
   type: 'npc',                 // 'npc' | 'sis' | 'tech' — usato per lo sblocco porta
   required: true,              // true = conta per sbloccare la porta
+  authOnly: true,              // opzionale — true = visibile SOLO ai giocatori autenticati (guest non lo vedono mai)
   gridX: 4,                    // posizione colonna nella stanza (1–14 circa)
   gridY: 5,                    // posizione riga nella stanza (1–9 circa)
   dlg: {
@@ -128,6 +131,94 @@ La porta si sblocca quando il giocatore ha interagito con:
 - **almeno 1 NPC** di tipo `'tech'`
 
 Gli NPC con `required: false` sono bonus — non bloccano la porta ma aggiungono pattern e stat.
+
+---
+
+## NPC riservati agli utenti autenticati (`authOnly`)
+
+Alcuni NPC possono essere visibili solo a chi ha effettuato l'accesso (vedi README → "Account e progresso"). Un guest non li vede mai spawnare nella stanza, non contano nel conteggio NPC del debrief di mondo, e non influenzano lo sblocco porta per i guest.
+
+Segui lo stesso pattern delle `*_ADDITIONS` esistenti: crea un array separato (es. `PMI_AUTH_ADDITIONS`, vedi quello già presente per il mondo PMI come esempio) con `authOnly: true` su ogni NPC, poi aggiungilo con `.push(...)` in `patchWorldsV12()` subito dopo la riga che aggiunge le `*_ADDITIONS` dello stesso mondo:
+
+```js
+export const PMI_AUTH_ADDITIONS = [
+  {
+    id: 'pmi_auth_esempio',
+    sprite: 'sis',
+    label: 'Solo utenti autenticati',
+    type: 'sis',
+    authOnly: true,       // ← questa è l'unica differenza rispetto a un NPC normale
+    required: false,
+    gridX: 6, gridY: 4,
+    dlg: { ... },
+    outs: { ... },
+    db: { ... },
+  },
+];
+```
+
+```js
+// in patchWorldsV12()
+WORLD_DEFS.pmi.npcs.push(...PMI_ADDITIONS);
+WORLD_DEFS.pmi.npcs.push(...PMI_AUTH_ADDITIONS);  // ← nuova riga
+```
+
+Il filtro vero e proprio (`getVisibleNpcs()` in `src/game/npcVisibility.js`) legge il flag a runtime — non serve toccare `game.js` per aggiungere altri NPC `authOnly`.
+
+---
+
+## Livelli di carriera (`level`) e bivi (`track`)
+
+Ogni mondo ha una progressione a 3 livelli, come una carriera da scalare: **Livello 1** (junior, sia relazionale che tecnico) → **Livello 2** → **Livello 3** (senior, in alcuni mondi con un bivio di percorso). Un livello N+1 compare nella stanza — senza dover uscire e rientrare — solo dopo che il giocatore ha visitato **tutti** gli NPC del livello N. Vale per guest e utenti autenticati allo stesso modo, entro la stessa sessione; per gli autenticati il livello raggiunto viene anche ricordato tra una sessione e l'altra (vedi `ST.worldsProgress` in `src/game/game.js`).
+
+I titoli di carriera mostrati nel messaggio di promozione sono definiti in `WORLD_CAREER_LEVELS` (`src/data/career-world-data.js`), un array di 3 titoli per mondo — o un oggetto `{track: titolo}` per i mondi con bivio.
+
+### NPC di un livello
+
+Un NPC "storico" senza `level` è implicitamente livello 1. Per aggiungere un livello, segui il pattern delle `*_ADDITIONS`: crea un array separato con `level: 2` (o `3`) su ogni NPC, poi aggiungilo con `.push(...)` in `patchWorldsV12()`:
+
+```js
+export const PMI_LEVEL2_ADDITIONS = [
+  {
+    id: 'pmi_level2_esempio',
+    sprite: 'mgr',
+    label: 'Situazione più complessa',
+    type: 'npc',
+    level: 2,              // ← questa è l'unica differenza rispetto a un NPC di livello 1
+    required: false,
+    gridX: 9, gridY: 3,
+    dlg: { ... },
+    outs: { ... },
+    db: { ... },
+  },
+];
+```
+
+```js
+// in patchWorldsV12(), dopo le altre push del mondo
+WORLD_DEFS.pmi.npcs.push(...PMI_LEVEL2_ADDITIONS);
+```
+
+Un NPC può avere sia `authOnly: true` sia `level: 2/3` insieme, se una situazione avanzata deve essere riservata anche agli utenti autenticati.
+
+### Bivio di carriera (`track`)
+
+Alcuni mondi (es. Consulenza: Expert vs Engagement Manager; Corporate: Senior Specialist vs Engineering Manager) offrono una scelta di percorso all'ultimo livello. Il pattern:
+
+1. Un **NPC bivio** (livello 3, senza `track` proprio) i cui `outs[]` includono un campo `track` oltre a `msg`/`stat` — questo imposta `ST.world.track` quando il giocatore sceglie:
+   ```js
+   outs:{
+     expert: {msg:'...', stat:{...}, track:'expert'},
+     manager:{msg:'...', stat:{...}, track:'manager'},
+   }
+   ```
+2. Due array separati di NPC livello 3, ciascuno con `track:'expert'` (o `'manager'`) su ogni NPC — visibili solo dopo che il giocatore ha scelto quel percorso.
+
+Gli NPC con `track` non contano ai fini dello sblocco di livello (non avrebbe senso richiedere di esplorare entrambi i percorsi). `WORLD_CAREER_LEVELS` per un mondo con bivio usa un oggetto `{expert:'...', manager:'...'}` al posto della stringa per il livello 3.
+
+### La "laurea" dell'account
+
+Le utenti autenticate saltano il quiz iniziale (restano "Esploratrice" — vedi `startFreshAuthenticated()`). La prima volta che esplorano **completamente** un mondo (tutti gli NPC visibili visitati, incluso il bivio se presente), il gioco mostra una schermata dove scelgono la propria classe definitiva tra le 5 in `CLASSES` (`maybeGraduateAccount()`/`showGraduation()` in `src/game/game.js`) — una sola volta per account (`ST.graduated`).
 
 ---
 
