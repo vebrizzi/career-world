@@ -22,6 +22,11 @@ export function getCurrentUser() {
   return currentUser;
 }
 
+export async function signOut() {
+  await supabase.auth.signOut();
+  currentUser = null;
+}
+
 // Resolves once the initial session (if any) has been read from storage.
 // Call once at boot before relying on isAuthenticated()/getCurrentUser().
 export async function getInitialUser() {

@@ -9,7 +9,7 @@ import {
   JOB_CHANGE_TRANSITIONS, PMI_ILLEGAL_QUESTION_NOTICE,
 } from '../data/career-world-data.js';
 import { getVisibleNpcs, getUnlockedLevel, isWorldFullyExplored } from './npcVisibility.js';
-import { isAuthenticated, getInitialUser } from '../auth/supabaseClient.js';
+import { isAuthenticated, getInitialUser, signOut } from '../auth/supabaseClient.js';
 import { saveProgress, resetProgress, loadProgress } from '../auth/persistence.js';
 
 // ══════════════════════════════════════════════════════════════
@@ -1743,6 +1743,23 @@ function performFullReset(){
   player=null;cursors=null;scn=null;show('title');
 }
 
+// Esce dall'account: chiude la sessione Supabase e azzera lo stato locale
+// (SENZA toccare resetProgress() — i progressi restano salvati sul server,
+// pronti a essere ripresi al prossimo login) così un login successivo, magari
+// con un altro account, non eredita la partita di questa sessione.
+async function doLogout(){
+  try{ await signOut(); }catch(e){ console.warn('logout failed',e); }
+  ST.step=0;ST.ans={hard:{},soft:{},pref:{}};
+  ST.char=null;ST.gs={SKILL:0,VOICE:0,CLARITY:0,NETWORK:0,ENERGY:12,RADAR:0,INSIDER:0};
+  ST.world={id:null,visited:[],choices:[],patterns:[],track:null,officialLevel:0,officialRAL:null};
+  ST.worldsProgress={};ST.worldPath=null;ST.worldHistory=[];ST.recalibrated=false;
+  gameRunning=false;evActive=false;exitTriggered=false;
+  if(PG){try{PG.destroy(true);}catch(e){}PG=null;}
+  player=null;cursors=null;scn=null;
+  document.body.classList.remove('calibration-mode');
+  show('title');
+}
+
 // Modale di conferma prima di un reset completo — spiega cosa viene perso
 // prima di procedere, dato che l'azione è irreversibile. Richiamabile da
 // più punti (mappa, schermata finale).
@@ -1841,10 +1858,12 @@ export function renderMap(){
         ${edgeSVG}${nodesSVG}
       </svg>
     </div>
-    <div style="text-align:center;margin-top:1.4rem">
+    <div style="text-align:center;margin-top:1.4rem;display:flex;gap:.6rem;justify-content:center;flex-wrap:wrap">
       <button id="btnResetAll" style="font-family:'Space Mono',monospace;font-size:.55rem;padding:.5rem 1rem;background:transparent;border:1px solid var(--border);color:var(--muted);cursor:pointer;border-radius:6px;letter-spacing:.05em">🔄 Ricomincia da zero</button>
+      ${isAuthenticated()?`<button id="btnLogout" style="font-family:'Space Mono',monospace;font-size:.55rem;padding:.5rem 1rem;background:transparent;border:1px solid var(--border);color:var(--muted);cursor:pointer;border-radius:6px;letter-spacing:.05em">🚪 Esci</button>`:''}
     </div>`;
   document.getElementById('btnResetAll')?.addEventListener('click',confirmReset);
+  document.getElementById('btnLogout')?.addEventListener('click',doLogout);
 
   if(canConclude){document.getElementById('btnConclude')?.addEventListener('click',()=>{show('outcome');renderOutcome();});}
   document.querySelectorAll('.mn-card').forEach(el=>{
