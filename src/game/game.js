@@ -131,7 +131,13 @@ export function show(id){
   document.querySelectorAll('.scr').forEach(s=>s.classList.remove('on'));
   document.getElementById('s-'+id).classList.add('on');
   ST.screen=id;
-  document.body.classList.toggle('in-assess', id==='assess');
+  // touch-action:none è il default su html/body (serve al canvas di gioco
+  // per bloccare pinch-zoom/bounce durante il movimento) — ma un browser
+  // combina i valori di touch-action per INTERSEZIONE lungo tutta la
+  // catena di antenati, quindi un .scr discendente non può "riabilitare"
+  // lo scroll touch da solo: va cambiato qui, sul body stesso, per ogni
+  // schermata che non sia il gioco (vedi regola body.scrollable in CSS).
+  document.body.classList.toggle('scrollable', id!=='game');
 }
 
 // ══════════════════════════════════════

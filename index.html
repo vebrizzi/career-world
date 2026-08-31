@@ -22,19 +22,20 @@
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;overflow:hidden;touch-action:none}
-body.in-assess{overflow:hidden;touch-action:auto}
+/* touch-action:none di default serve al canvas di gioco (blocca pinch-zoom
+   /bounce durante il movimento) — ma un browser combina touch-action per
+   INTERSEZIONE lungo tutta la catena di antenati: un .scr discendente non
+   può "riabilitare" lo scroll touch da solo (impostarlo lì non ha alcun
+   effetto pratico), va cambiato qui sul body. body.scrollable si applica a
+   ogni schermata tranne il gioco (vedi show() in game.js) — senza, lo
+   scroll con overflow-y:auto funziona col mouse ma non con lo swipe reale
+   su mobile, rendendo irraggiungibile ciò che sta sotto la piega su
+   schermate più alte dello schermo (es. #s-map, #s-assess). */
+body.scrollable{touch-action:pan-y}
 body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text)}
 body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.08) 2px,rgba(0,0,0,.08) 4px);pointer-events:none;z-index:9000}
 #gc{width:100vw;height:100vh;overflow:hidden;position:relative}
-/* touch-action:pan-y qui sotto: html/body impostano touch-action:none
-   (serve al gioco per bloccare pinch-zoom/bounce durante il movimento), ma
-   quel :none si applica anche a ogni .scr discendente — su schermate con
-   contenuto più alto dello schermo (es. #s-map) lo scroll con overflow-y:auto
-   funziona col mouse ma non con lo swipe reale su mobile, rendendo
-   irraggiungibile ciò che sta sotto la piega. #s-game resta comunque non
-   scrollabile: imposta overflow:hidden su se stesso, sovrascrivendo questo
-   overflow-y:auto ereditato. */
-.scr{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem;overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y;opacity:0;transform:translateY(14px);transition:opacity .35s,transform .35s;pointer-events:none}
+.scr{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem;overflow-y:auto;-webkit-overflow-scrolling:touch;opacity:0;transform:translateY(14px);transition:opacity .35s,transform .35s;pointer-events:none}
 .scr.on{opacity:1;transform:none;pointer-events:all}
 
 /* ── TITLE ── */
