@@ -1989,54 +1989,45 @@ const MAP_NODES=[
   {id:'corporate',emoji:'🏗️',label:'Large\nCorporate',color:'#81c784',affinities:['pmi','consulenza'],desc:'Risorse, politica, rete informale'},
   {id:'piva',emoji:'💡',label:'P.IVA &\nFounder',color:'#6af7c8',affinities:['startup','corporate'],desc:'Autonomia totale, costruisci il tuo'},
 ];
-const MAP_EDGES=[];
-MAP_NODES.forEach(n=>{
-  n.affinities.forEach(b=>{
-    const exists=MAP_EDGES.some(e=>(e[0]===n.id&&e[1]===b)||(e[0]===b&&e[1]===n.id));
-    if(!exists)MAP_EDGES.push([n.id,b]);
-  });
-});
-const MAP_POS=(()=>{
-  const cx=300,cy=265,r=185;
-  const ids=['pmi','consulenza','corporate','pa','piva','startup'];
-  const pos={};
-  ids.forEach((id,i)=>{const angle=(Math.PI*2/6)*i-Math.PI/2;pos[id]={x:Math.round(cx+r*Math.cos(angle)),y:Math.round(cy+r*Math.sin(angle))};});
-  return pos;
-})();
+// Bounding box (in % dell'immagine galletcity.png, 512×512) di ogni edificio
+// assegnato a un mondo — assegnazione fatta a occhio sull'illustrazione
+// (nessun dato "ufficiale" dietro, solo una scelta estetica/narrativa):
+// la torre istituzionale a sinistra → PA, il capannone con macchinari in
+// alto a destra → PMI (fabbrica), il blocco denso in basso a sinistra →
+// Consulenza (grattacieli), l'edificio col logo/prato circolare → Corporate
+// (campus aziendale), il palazzo scuro con grate → Startup (tech), il
+// piccolo edificio isolato a destra → P.IVA (attività solista).
+const MAP_CITY_POS={
+  pa:        {left:1,  top:44, width:11, height:26},
+  pmi:       {left:64, top:47, width:16, height:23},
+  consulenza:{left:0,  top:71, width:27, height:18},
+  corporate: {left:28, top:73, width:23, height:17},
+  startup:   {left:62, top:76, width:18, height:13},
+  piva:      {left:83, top:77, width:16, height:13},
+};
 
 export function renderMap(){
   const M=UI_TEXTS.map; // alias locale
   const done=ST.worldHistory;
-  const VW=600,VH=530,NW=84,NH=84;
-  const edgeSVG=MAP_EDGES.map(([a,b])=>{
-    const pa=MAP_POS[a],pb=MAP_POS[b];
-    const doneA=done.includes(a),doneB=done.includes(b);
-    const stroke=(doneA||doneB)?'#3a4a6a':'#232340';
-    const sw=(doneA&&doneB)?2:1.5;
-    return `<line x1="${pa.x}" y1="${pa.y}" x2="${pb.x}" y2="${pb.y}" stroke="${stroke}" stroke-width="${sw}" stroke-dasharray="${doneA&&doneB?'none':'6,4'}" opacity=".7"/>`;
-  }).join('');
-  const nodesSVG=MAP_NODES.map(n=>{
-    const pos=MAP_POS[n.id];
+  const nodesHTML=MAP_NODES.map(n=>{
+    const pos=MAP_CITY_POS[n.id];
     const isDone=done.includes(n.id);
-    const bg=isDone?n.color+'33':n.color+'18';
-    const opacity=isDone?'.75':'1';
-    // Legge status da UI_TEXTS
     const statusTxt=isDone?M.node_status_done:M.node_status_todo;
-    const statusCol=isDone?'#6af7c8':n.color;
-    const badge=isDone?`<div class="mn-done-badge">✓</div>`:'';
-    const foW=110,foH=130;
+    const badge=isDone?`<div class="mn-done-badge" style="position:absolute;top:-8px;right:-8px">✓</div>`:'';
+    const flatLabel=n.label.replace('\n',' ');
+    // Ancora l'etichetta a sinistra/destra invece che al centro per gli
+    // edifici vicini ai bordi dell'immagine, altrimenti la pill trabocca
+    // fuori dal contenitore e forza uno scroll orizzontale indesiderato.
+    const cx=pos.left+pos.width/2;
+    const labelPos=cx<15?'left:0;transform:none':cx>85?'right:0;left:auto;transform:none':'left:50%;transform:translateX(-50%)';
     return `
-    <foreignObject x="${pos.x-foW/2}" y="${pos.y-NH/2-8}" width="${foW}" height="${foH}" class="mn-fo">
-      <div xmlns="http://www.w3.org/1999/xhtml" class="mn-card" data-world="${n.id}" style="opacity:${opacity};width:${NW}px;margin:0 auto;">
-        <div class="mn-box" style="background:${bg};border-color:${n.color};width:${NW}px;height:${NH}px;">
-          ${badge}
-          <div class="mn-emoji">${n.emoji}</div>
-          <div class="mn-lbl" style="color:${n.color}">${n.label}</div>
-        </div>
-        <div class="mn-status" style="color:${statusCol}">${statusTxt}</div>
-        <div class="mn-affinities">${n.desc}</div>
+    <div class="mn-card" data-world="${n.id}" title="${flatLabel} — ${statusTxt} — ${n.desc}"
+      style="position:absolute;left:${pos.left}%;top:${pos.top}%;width:${pos.width}%;height:${pos.height}%;border:2px solid ${n.color}${isDone?'':'99'};border-radius:6px;box-shadow:0 0 10px ${n.color}55;">
+      ${badge}
+      <div style="position:absolute;${labelPos};bottom:-1.5rem;white-space:nowrap;font-family:'Space Mono',monospace;font-size:.55rem;color:${n.color};background:rgba(8,8,20,.85);border:1px solid ${n.color}77;border-radius:4px;padding:.15rem .4rem;pointer-events:none">
+        ${n.emoji} ${flatLabel}
       </div>
-    </foreignObject>`;
+    </div>`;
   }).join('');
   const canConclude=done.length>=2;
   // Legge btn e unlock_hint da UI_TEXTS
@@ -2048,11 +2039,9 @@ export function renderMap(){
     <div class="map-subtitle">${M.subtitle}</div>
     <div class="map-free-note">${M.free_note}</div>
     ${concludeBtn}
-    <div class="map-svg-wrap">
-      <svg viewBox="0 0 ${VW} ${VH}" xmlns="http://www.w3.org/2000/svg">
-        <defs><filter id="glow"><feGaussianBlur stdDeviation="3" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
-        ${edgeSVG}${nodesSVG}
-      </svg>
+    <div class="map-svg-wrap" style="position:relative;width:100%;max-width:512px;margin:1.6rem auto 2.2rem">
+      <img src="/map/galletcity.png" alt="" style="display:block;width:100%;height:auto;border-radius:8px;image-rendering:pixelated;user-select:none" draggable="false" />
+      ${nodesHTML}
     </div>
     <div style="text-align:center;margin-top:1.4rem;display:flex;gap:.6rem;justify-content:center;flex-wrap:wrap">
       <button id="btnResetAll" style="font-family:'Space Mono',monospace;font-size:.55rem;padding:.5rem 1rem;background:transparent;border:1px solid var(--border);color:var(--muted);cursor:pointer;border-radius:6px;letter-spacing:.05em">🔄 Ricomincia da zero</button>
