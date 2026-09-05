@@ -467,10 +467,10 @@ const TOUCH={left:false,right:false,up:false,down:false,act:false};
 // Eccezione: le "sis" (alleate) non pescano dal pool — hanno sempre lo
 // stesso avatar dedicato ALLY_AVATAR_KEY, per renderle riconoscibili a
 // colpo d'occhio come figura ricorrente positiva nel gioco.
-const AVATAR_KEYS=['avatar_old_man','avatar_old_woman','avatar_young_man','avatar_bald_guy','avatar_afro_woman','avatar_black_man','avatar_arab_woman'];
+const AVATAR_KEYS=['avatar_old_man','avatar_woman','avatar_young_man','avatar_bald_guy','avatar_afro_woman','avatar_black_man','avatar_old_woman'];
 const AVATAR_GENDER={
-  avatar_old_man:'m', avatar_old_woman:'f', avatar_young_man:'m', avatar_bald_guy:'m',
-  avatar_afro_woman:'f', avatar_black_man:'m', avatar_arab_woman:'f',
+  avatar_old_man:'m', avatar_woman:'f', avatar_young_man:'m', avatar_bald_guy:'m',
+  avatar_afro_woman:'f', avatar_black_man:'m', avatar_old_woman:'f',
 };
 const ALLY_AVATAR_KEY='avatar_ally';
 const PERSON_SPRITES=new Set(['mgr','sis','col']);
