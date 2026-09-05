@@ -1365,27 +1365,34 @@ function showRecalibration(){
 function enterWorld(worldId){
   const wdef=WORLD_DEFS[worldId];
   if(!wdef){console.warn('World not found:',worldId);return;}
+  const existingOfficial=ST.worldsProgress[worldId];
+  // Primo ingresso mai in un mondo (tranne P.IVA, che non ha colloqui — vedi
+  // §5.6): va sostenuto un colloquio d'ingresso vero e proprio, che comunica
+  // anche la RAL di partenza — non più un livello 1 gratuito e silenzioso.
+  // Si può fallire e ritentare subito senza limiti (si torna qui, il mondo
+  // resta cliccabile): non un vero gate, coerente con "Nessun game over".
+  if(worldId!=='piva'&&!existingOfficial?.officialLevel){
+    showInterview(worldId,1,null);
+    return;
+  }
   // Utenti autenticati riprendono da dove avevano lasciato in questo mondo;
   // i guest ripartono sempre da zero per l'esplorazione libera (nessuna
   // memoria persistente) — ma il livello UFFICIALE (officialLevel/RAL) non
   // "si dimentica" solo perché si rientra nella stessa sessione, quindi si
   // legge comunque da ST.worldsProgress anche per i guest.
   const saved=isAuthenticated()?ST.worldsProgress[worldId]:null;
-  const existingOfficial=ST.worldsProgress[worldId];
   ST.world=saved
     ? {id:worldId,visited:[...saved.visited],choices:[...saved.choices],patterns:[...saved.patterns],track:saved.track||null,officialLevel:saved.officialLevel||0,officialRAL:saved.officialRAL??null,pivaState:saved.pivaState||null}
     : {id:worldId,visited:[],choices:[],patterns:[],track:null,officialLevel:existingOfficial?.officialLevel||0,officialRAL:existingOfficial?.officialRAL??null,pivaState:existingOfficial?.pivaState||null};
-  // Primo ingresso mai in questo mondo: livello 1 "ufficiale" gratuito, come
-  // essere assunte — nessun colloquio richiesto solo per iniziare. Il
-  // colloquio serve per salire di livello o cambiare mondo (§9/§4).
-  if(!existingOfficial?.officialLevel){
-    grantOfficialLevel(worldId,1,null,{free:true});
-  }
-  // P.IVA non ha un datore di lavoro che assegna una RAL: il fatturato si
+  // P.IVA non ha un datore di lavoro che assegna una RAL, quindi niente
+  // colloquio: livello 1 gratuito e silenzioso come prima. Il fatturato si
   // costruisce contratto per contratto (vedi applyRevenueEffect() in
   // handleChoice()). officialRAL qui rappresenta il fatturato live, non una
   // stima di mercato — parte da 0 alla primissima volta, altrimenti riprende
   // da dove era rimasto (persistito in ST.worldsProgress come tutto il resto).
+  if(worldId==='piva'&&!existingOfficial?.officialLevel){
+    grantOfficialLevel(worldId,1,null,{free:true});
+  }
   if(worldId==='piva'&&!ST.world.pivaState){
     ST.world.pivaState=createPivaState();
     ST.world.officialRAL=0;
@@ -1399,8 +1406,10 @@ function enterWorld(worldId){
 // non va confuso col livello ESPLORATO (getUnlockedLevel/ST.world.visited,
 // sempre gratuito, sblocca solo il contenuto NPC). Merge coi progressi già
 // esistenti, non li cancella. Tre casi:
-//  - opts.free (primo ingresso mai in un mondo, vedi enterWorld()): livello 1
-//    automatico, RAL "di mercato" pura, nessun effetto collaterale.
+//  - opts.free (solo P.IVA, che non ha colloqui — vedi enterWorld()/§5.6):
+//    livello 1 automatico, nessun effetto collaterale. Per tutti gli altri
+//    mondi il primo ingresso passa da un vero colloquio (showInterview()),
+//    non da questo path.
 //  - promozione interna (mondo target = mondo in cui si è già ufficialmente,
 //    niente colloquio da un mondo diverso): INSIDER invariato, nessun bonus
 //    NETWORK, cap di crescita RAL più stretto (INTERNAL_PROMOTION_RAL_CAP).
@@ -1564,10 +1573,24 @@ function showInterview(worldId,targetLevel,track){
     const luckRejected=scorePassed&&Math.random()<luckChance;
     const passed=scorePassed&&!luckRejected;
     const luckMsg=luckRejected?INTERVIEW_LUCK_MESSAGES[Math.floor(Math.random()*INTERVIEW_LUCK_MESSAGES.length)]:null;
+    // Applicato subito, non al click su "Continua": così il risultato può
+    // già mostrare la RAL comunicata, non solo l'esito pass/fail. Un cambio
+    // di azienda vero (mondo diverso da dove si è ora) va calcolato PRIMA di
+    // grantOfficialLevel() — che non tocca ST.world.id. needsEntry copre sia
+    // il cambio di azienda sia il primissimo ingresso in assoluto (ST.world.id
+    // ancora nullo, vedi enterWorld()), che altrimenti non aprirebbe mai il mondo.
+    let isJobChange=false,needsEntry=false;
+    if(passed){
+      isJobChange=!!ST.world.id&&ST.world.id!==worldId;
+      needsEntry=ST.world.id!==worldId;
+      grantOfficialLevel(worldId,targetLevel,track);
+    }
+    const ral=passed?ST.worldsProgress[worldId]?.officialRAL:null;
+    const ralLabel=RAL_LABEL_BY_WORLD[worldId]||'RAL';
     const headline=passed?'🎉 Colloquio superato':luckRejected?'🎲 Così vicina, eppure no':'😕 Colloquio non superato';
     const color=passed?'#6af7c8':luckRejected?'#ffb74d':'#f76a6a';
     let body=passed
-      ? `Congratulazioni! Sei stata assunta come <strong>${title}</strong> in ${wLabel}. Punteggio: ${score}/${maxScore}.`
+      ? `Congratulazioni! Sei stata assunta come <strong>${title}</strong> in ${wLabel}. Punteggio: ${score}/${maxScore}.${ral!=null?`<br>💶 ${ralLabel}: <strong>${ral.toLocaleString('it-IT')} €</strong>.`:''}`
       : luckRejected
         ? `Punteggio: ${score}/${maxScore} — sufficiente per il ruolo. ${luckMsg} Non è dipeso dalle tue risposte. Puoi riprovare quando vuoi.`
         : `Punteggio: ${score}/${maxScore}. Non questa volta — ma puoi riprovare quando vuoi.`;
@@ -1580,16 +1603,9 @@ function showInterview(worldId,targetLevel,track){
       </div>`;
     document.getElementById('btnInterviewClose').addEventListener('click',()=>{
       overlay.remove();
-      showTc();
-      if(passed){
-        // Un cambio di azienda vero (mondo diverso da dove si è ora) va
-        // calcolato PRIMA di grantOfficialLevel() — che non tocca ST.world.id —
-        // e mostra un breve beat narrativo prima di spostare davvero la
-        // giocatrice lì, invece di un teletrasporto istantaneo.
-        const isJobChange=ST.world.id&&ST.world.id!==worldId;
-        grantOfficialLevel(worldId,targetLevel,track);
-        if(isJobChange)showJobChangeTransition(()=>enterWorld(worldId));
-      }
+      if(ST.screen==='game')showTc();
+      if(isJobChange)showJobChangeTransition(()=>enterWorld(worldId));
+      else if(needsEntry)enterWorld(worldId);
     });
   }
 
