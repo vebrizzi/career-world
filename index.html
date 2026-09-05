@@ -269,9 +269,19 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;heigh
    rimpicciolire nodi/testo — stessa filosofia "naviga invece di rimpicciolire"
    usata nelle stanze di gioco (vedi CAMERA_ZOOM in game.js). */
 .map-svg-wrap{width:100%;max-width:680px;position:relative;overflow-x:auto;-webkit-overflow-scrolling:touch;}
-.map-svg-wrap svg{width:100%;min-width:560px;height:auto;overflow:visible;pointer-events:all;}
-.mn-fo{overflow:visible;pointer-events:all;}
-.mn-card{display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;transition:transform .18s;pointer-events:all;}
+.map-svg-wrap svg{width:100%;min-width:560px;height:auto;overflow:visible;}
+.mn-fo{overflow:visible;}
+.mn-card{display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;transition:transform .18s;}
+/* Il contenuto SVG (svg/foreignObject/card) ignora di default il
+   pointer-events:none ereditato da #s-map quando la mappa non è la
+   schermata attiva — va quindi riabilitato SOLO quando #s-map ha .on,
+   altrimenti questi nodi restano cliccabili "invisibilmente" sopra
+   qualunque schermata venga mostrata dopo (es. bug: reset da zero →
+   click su INIZIA finiva per riattivare un mondo tramite un mn-card
+   ancora nel DOM, mai perché visibile ma perché ancora intercettava i click). */
+#s-map.on .map-svg-wrap svg,
+#s-map.on .mn-fo,
+#s-map.on .mn-card{pointer-events:all;}
 .mn-card:hover{transform:scale(1.08);}
 .mn-card:hover .mn-box{filter:brightness(1.2);}
 .mn-box{width:84px;height:84px;border-radius:12px;border:2px solid;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;transition:all .2s;position:relative;}

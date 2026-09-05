@@ -1,7 +1,8 @@
 import Phaser from 'phaser';
 import {
   UI_TEXTS, STEPS, SMAP, CLASSES, WORLD_DEFS, INNER_CRITICS, WORLD_INTROS, WORLD_DEBRIEF, WORLD_CAREER_LEVELS,
-  RAL_BASE_BY_LEVEL, RAL_CLASS_MULTIPLIER, RAL_WORLD_MULTIPLIER, RAL_LABEL_BY_WORLD, WORLD_COMPANY_SIZE,
+  RAL_BASE, AREA_MULTIPLIER, RAL_LEVEL_BY_TIER, computeOfferRange, RAL_LABEL_BY_WORLD, WORLD_COMPANY_SIZE,
+  computeReadiness, tierFromReadiness, createPivaState, applyRevenueEffect,
   INTERVIEW_QUESTIONS, INTERVIEW_PASS_RATIO, INTERVIEW_WORLD_QUESTIONS,
   INTERVIEW_LUCK_REJECT_MAX, INTERVIEW_LUCK_REJECT_MIN, INTERVIEW_LUCK_MESSAGES,
   INSIDER_RETENTION_RATIO, NETWORK_JOB_CHANGE_BONUS_CAP,
@@ -63,9 +64,11 @@ export const ST={
   screen:'title', step:0,
   ans:{hard:{},soft:{},pref:{}},
   char:null,
-  gs:{SKILL:0,VOICE:0,CLARITY:0,NETWORK:0,ENERGY:12,RADAR:0,INSIDER:0},
-  world:{id:null,visited:[],choices:[],patterns:[],track:null,officialLevel:0,officialRAL:null},
-  // { [worldId]: {visited,choices,patterns,track,officialLevel,officialRAL} } — memoria persistente.
+  gs:{SKILL:0,VOICE:0,CLARITY:0,NETWORK:0,ENERGY:50,RADAR:0,INSIDER:0}, // ENERGY=STAT_MAX.ENERGY (dichiarato più sotto, non referenziabile qui)
+  world:{id:null,visited:[],choices:[],patterns:[],track:null,officialLevel:0,officialRAL:null,pivaState:null},
+  // { [worldId]: {visited,choices,patterns,track,officialLevel,officialRAL,pivaState} } — memoria persistente.
+  // pivaState (solo mondo 'piva') = {fatturato,reputationMultiplier,contracts,concentrationRisk},
+  // vedi createPivaState()/applyRevenueEffect() in career-world-data.js e handleChoice() sotto.
   // officialLevel/officialRAL = livello e RAL "ufficiali" (via Cambia lavoro
   // o il primo ingresso gratuito), separati dal livello ESPLORATO che si
   // legge da `visited` (vedi §5.2/§9 in CAREER_WORLD_TESTI_E_REGOLE.md).
@@ -73,6 +76,12 @@ export const ST={
   worldPath:null,
   worldHistory:[],
   recalibrated:false,  // true dopo l'unica ricalibrazione di classe consentita (vedi maybeOfferRecalibration())
+  burnoutWarned:false, // true dopo il primo avviso di burnout (ENERGY a zero) — mostrato una sola volta a partita
+  // Leva di negoziazione accumulata dai nodi di dialogo con ralEffect
+  // (es. cons_salary, pmi_auth_salary_data) — consumata e azzerata al
+  // prossimo grantOfficialLevel() riuscito, vedi computeRAL()/handleChoice().
+  // Non persistito: è pensato per essere speso a breve, non per durare tra sessioni.
+  career:{ralModifier:0},
 };
 
 const SC={
@@ -116,8 +125,13 @@ function computeChar(){
     SKILL: clamp(n(avg(sc('python'),sc('sql'),sc('ml'),sc('llm')))),
     VOICE: clamp(n(avg(ss('comm'),ss('conflict')*.9))),
     CLARITY:clamp(n(avg(ss('feedback'),ss('auto')))),
-    NETWORK:clamp(n(avg(ss('network')))+Math.floor(Math.random()*3)+3),
-    ENERGY: clamp(n(avg(ss('chaos'),ss('feedback')))),
+    // NETWORK parte sempre al minimo: non è un tratto di personalità, si
+    // costruisce solo giocando (relazioni reali coltivate scelta dopo scelta).
+    NETWORK:0,
+    // ENERGY è una risorsa che si consuma con le interazioni (vedi
+    // ENERGY_COST/ENERGY_GAIN_* in handleChoice), non un tratto — si parte
+    // sempre pieni, come RADAR parte sempre da una base fissa.
+    ENERGY: STAT_MAX.ENERGY,
     RADAR:  3,
     INSIDER:0, // conoscenza delle procedure/politica interna del posto attuale: si parte sempre da zero
   };
@@ -210,7 +224,7 @@ export function renderAssess(){
     else{
       document.body.classList.remove('calibration-mode');
       ST.char=computeChar();
-      ST.gs={...ST.char.stats,ENERGY:10};
+      ST.gs={...ST.char.stats};
       show('card');renderCard();
     }
   });
@@ -244,9 +258,13 @@ function renderCard(){
       <div class="c-csub">${cls.name} ${UI_TEXTS.card.level_suffix}</div>
     </div>
     <div class="c-stats">${rows}</div>
+    <div style="text-align:right;margin-top:-.4rem">
+      <button id="btnCardStatInfo" style="background:none;border:none;color:var(--muted);font-size:.62rem;cursor:pointer;text-decoration:underline;padding:0">ℹ️ ${UI_TEXTS.stat_info.title}</button>
+    </div>
     <div class="c-desc">${cls.desc}<div class="c-traits">${traits}</div></div>`;
   // bias_note da UI_TEXTS
   document.getElementById('biasNote').innerHTML = UI_TEXTS.card.bias_note;
+  document.getElementById('btnCardStatInfo').addEventListener('click',showStatInfo);
   document.getElementById('btnEnterGame').onclick=()=>{
     show('map');
     renderMap();
@@ -340,15 +358,26 @@ function buildProgressPanel(){
   return `<div class="progress-panel" id="progressPanel">${rows}${status}</div>`;
 }
 
-// RAL "di mercato" indicativa (dati medi, vedi RAL_* in career-world-data.js):
-// livello × profilo (classe) × contesto (mondo), arrotondata al migliaio.
-// Funzione pura — NON è la RAL ufficiale mostrata in HUD: quella è ancorata
-// alla RAL precedente della giocatrice, vedi grantOfficialLevel().
-function computeRAL(worldId,clsKey,level){
-  const base=RAL_BASE_BY_LEVEL[level]||RAL_BASE_BY_LEVEL[1];
-  const clsMul=RAL_CLASS_MULTIPLIER[clsKey]??1;
-  const worldMul=RAL_WORLD_MULTIPLIER[worldId]??1;
-  return Math.round((base*clsMul*worldMul)/1000)*1000;
+// RAL "di mercato" indicativa (RAL_BASE × AREA_MULTIPLIER in
+// career-world-data.js): ruolo × livello di seniority × contesto (mondo),
+// arrotondata al migliaio. Funzione pura — NON è la RAL ufficiale mostrata
+// in HUD: quella è ancorata alla RAL precedente della giocatrice, vedi
+// grantOfficialLevel(). `ralModifier` (accumulato da scelte di negoziazione
+// nei dialoghi, vedi ralEffect in handleChoice()) sposta il punto scelto
+// nel range verso l'alto o il basso prima dell'ancoraggio.
+// P.IVA è un caso speciale: non ha un range RAL diretto (è tariffa/giorno,
+// non stipendio) — il suo "RAL ufficiale" è il fatturato realmente
+// costruito contratto per contratto, vedi applyRevenueEffect() in handleChoice().
+function computeRAL(worldId,clsKey,level,ralModifier=0){
+  if(worldId==='piva')return 0;
+  const tier=RAL_LEVEL_BY_TIER[level]||'junior';
+  const role=RAL_BASE[clsKey]?clsKey:'analyst'; // fallback per classi non mappate (es. 'explorer')
+  const range=computeOfferRange(role,tier,worldId);
+  if(!range)return 0;
+  let offer=range[0]+(range[1]-range[0])*0.5;
+  offer*=(1+Math.max(-0.2,Math.min(0.2,ralModifier||0)));
+  offer=Math.max(range[0]*0.9,Math.min(range[1]*1.15,offer));
+  return Math.round(offer/1000)*1000;
 }
 // Mostra la RAL UFFICIALE (ST.world.officialRAL — vedi grantOfficialLevel()),
 // non quella "di mercato pura" per il livello esplorato: esplorare sblocca
@@ -386,11 +415,15 @@ function renderHUD(worldLabel){
     </div>
     <div class="g-hud-center">
       <div class="g-world-label">${worldLabel}</div>
-      <div class="g-stats-row">${statHtml}</div>
+      <div style="display:flex;align-items:center;gap:.35rem">
+        <div class="g-stats-row">${statHtml}</div>
+        <button id="btnStatInfo" title="${UI_TEXTS.stat_info.title}" style="background:none;border:1px solid var(--border);color:var(--muted);border-radius:50%;width:16px;height:16px;line-height:1;font-size:.55rem;cursor:pointer;flex-shrink:0;padding:0">ℹ️</button>
+      </div>
     </div>
     ${buildProgressPanel()}
     ${buildJobChangeBtn()}`;
   document.getElementById('btnJobChange')?.addEventListener('click',()=>showJobChangePicker());
+  document.getElementById('btnStatInfo')?.addEventListener('click',showStatInfo);
 }
 
 function updHUD(){
@@ -405,6 +438,34 @@ function updHUD(){
     jobBtn.outerHTML=buildJobChangeBtn();
     document.getElementById('btnJobChange')?.addEventListener('click',()=>showJobChangePicker());
   }
+}
+
+// Overlay informativo (richiamabile da HUD e Card, vedi renderHUD()/renderCard())
+// che spiega cosa rappresenta ogni statistica sia nel gioco sia nella vita
+// reale — utile perché diverse regole (RADAR/NETWORK/ENERGY) non sono ovvie
+// solo guardando la barra.
+function showStatInfo(){
+  const info=UI_TEXTS.stat_info;
+  const rows=Object.entries(info.stats).map(([k,v])=>`
+    <div style="margin-bottom:.9rem;padding-bottom:.9rem;border-bottom:1px solid var(--border)">
+      <div style="font-family:'Space Mono',monospace;font-weight:700;font-size:.72rem;color:${SC[k]};margin-bottom:.3rem">${k}</div>
+      <div style="font-size:.76rem;line-height:1.5;margin-bottom:.25rem"><strong style="color:var(--muted)">Nel gioco:</strong> ${v.game}</div>
+      <div style="font-size:.76rem;line-height:1.5"><strong style="color:var(--muted)">Nella vita reale:</strong> ${v.life}</div>
+    </div>`).join('');
+  const overlay=document.createElement('div');
+  overlay.className='wi-ov';
+  overlay.style.cssText='position:fixed;inset:0;z-index:700;';
+  overlay.innerHTML=`
+    <div class="wi-box" style="text-align:left;margin:auto;max-width:520px;max-height:80vh;overflow-y:auto">
+      <div class="wi-title" style="text-align:center">${info.title}</div>
+      <div class="wi-what" style="text-align:center;margin-bottom:1rem">${info.intro}</div>
+      ${rows}
+      <div style="text-align:center;margin-top:.6rem">
+        <button class="btn-next" id="siClose" style="background:var(--surface2)">${info.btn_close}</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  document.getElementById('siClose').addEventListener('click',()=>overlay.remove());
 }
 
 // ══════════════════════════════════════
@@ -1110,25 +1171,101 @@ function handleChoice(def,out){
   // cresce per relazioni dirette con clienti e community, molto più in
   // fretta che altrove, dove passa più spesso da un cambio di contesto.
   const PIVA_NETWORK_SCALE=2;
+  const hasExplicitRadar=Object.prototype.hasOwnProperty.call(res.stat,'RADAR');
   Object.entries(res.stat).forEach(([k,v])=>{
+    // ENERGY non segue più i delta autorali della singola scelta — è una
+    // risorsa strutturale, vedi ENERGY_COST/ENERGY_GAIN qui sotto. Le chiavi
+    // ENERGY ancora presenti nei dati (career-world-data.js) restano lì come
+    // testo narrativo del messaggio ma non vengono più applicate.
+    if(k==='ENERGY')return;
     let delta=v<0?v:Math.round(v*SCALE);
     if(ST.world.id==='piva'&&k==='NETWORK'&&v>0)delta=Math.round(v*SCALE*PIVA_NETWORK_SCALE);
     ST.gs[k]=Math.max(0,Math.min(STAT_MAX[k],(ST.gs[k]||0)+delta));
   });
-  ST.gs.RADAR=Math.min(STAT_MAX.RADAR,(ST.gs.RADAR||0)+Math.round(1*SCALE));
+  // Baseline RADAR: si applica solo se la scelta non ha già un suo delta RADAR esplicito,
+  // altrimenti si sommerebbe a quello e vanificherebbe anche le penalità (RADAR:-1).
+  let radarBaseline=0;
+  if(!hasExplicitRadar){
+    radarBaseline=Math.round(1*SCALE);
+    ST.gs.RADAR=Math.min(STAT_MAX.RADAR,(ST.gs.RADAR||0)+radarBaseline);
+  }
+  // ENERGY: risorsa che si consuma a ogni interazione — cala il doppio
+  // quando appare la voce interiore critica, risale parlando con le
+  // alleate (type 'sis') o affrontando una sfida tecnica (type 'tech').
+  const ENERGY_COST=3,ENERGY_COST_CRITIC=6,ENERGY_GAIN=5;
+  let energyDelta=-ENERGY_COST;
+  if(def.isCritic)energyDelta=-ENERGY_COST_CRITIC;
+  else if(def.type==='sis'||def.type==='tech')energyDelta=ENERGY_GAIN;
+  ST.gs.ENERGY=Math.max(0,Math.min(STAT_MAX.ENERGY,(ST.gs.ENERGY||0)+energyDelta));
+  // Leva di negoziazione (ralEffect, solo sui nodi a tema esplicitamente
+  // negoziale, es. cons_salary/pmi_auth_salary_data): si accumula e si
+  // consuma al prossimo grantOfficialLevel() riuscito, vedi computeRAL().
+  let ralLeverageDelta=0;
+  if(res.ralEffect){
+    ralLeverageDelta=res.ralEffect.delta||0;
+    ST.career.ralModifier=(ST.career.ralModifier||0)+ralLeverageDelta;
+  }
+  // P.IVA: il fatturato si costruisce contratto per contratto, non è
+  // assegnato da un colloquio — vedi applyRevenueEffect()/createPivaState()
+  // in career-world-data.js.
+  let revenueResults=[];
+  if(res.revenueEffect&&ST.world.id==='piva'&&ST.world.pivaState){
+    const effects=Array.isArray(res.revenueEffect)?res.revenueEffect:[res.revenueEffect];
+    effects.forEach(eff=>{
+      const r=applyRevenueEffect(ST.world.pivaState,eff);
+      if(r)revenueResults.push(r);
+    });
+    ST.world.officialRAL=ST.world.pivaState.fatturato;
+  }
   ST.world.choices.push({npc:def.id,out});
   if(res.track)ST.world.track=res.track; // bivio di carriera: la scelta determina il percorso
-  showDebrief(def,res);
+  showDebrief(def,res,radarBaseline,energyDelta,ralLeverageDelta,revenueResults);
 }
 
-function showDebrief(def,res){
+function showDebrief(def,res,radarBaseline=0,energyDelta=0,ralLeverageDelta=0,revenueResults=[]){
   hideTc();
   const db=def.db;
-  // Usa UI_TEXTS per le label e il gain RADAR
-  const pills=Object.entries(res.stat).map(([k,v])=>{
+  // Usa UI_TEXTS per le label e il gain RADAR. ENERGY è esclusa dai delta
+  // autorali del res.stat (vedi handleChoice) e riceve una pillola dedicata
+  // col valore strutturale realmente applicato.
+  const energyCol=energyDelta<0?'#f76a6a':SC.ENERGY;
+  const pills=Object.entries(res.stat).filter(([k])=>k!=='ENERGY').map(([k,v])=>{
     const col=v<0?'#f76a6a':SC[k];
     return `<span class="st-pill" style="color:${col};border-color:${col}">${k} ${v>0?'+':''}${v}</span>`;
-  }).join('')+`<span class="st-pill" style="color:${SC.RADAR};border-color:${SC.RADAR}">${UI_TEXTS.npc_debrief.radar_gain_label}</span>`;
+  }).join('')
+  +(radarBaseline>0?`<span class="st-pill" style="color:${SC.RADAR};border-color:${SC.RADAR}">${UI_TEXTS.npc_debrief.radar_gain_label}</span>`:'')
+  +`<span class="st-pill" style="color:${energyCol};border-color:${energyCol}">ENERGY ${energyDelta>0?'+':''}${energyDelta}</span>`;
+  // Warning burnout: la prima volta che ENERGY tocca zero mostra la nota
+  // completa (con riferimento OMS), le volte successive solo un promemoria
+  // breve — niente game over, solo un segnale di sostenibilità (vedi §title.description).
+  let burnoutBlock='';
+  if(ST.gs.ENERGY===0){
+    const full=!ST.burnoutWarned;
+    ST.burnoutWarned=true;
+    burnoutBlock=`<div class="db-ins" style="margin-top:.6rem;background:rgba(247,106,106,.08);border-left-color:#f76a6a;color:#f76a6a">${full?UI_TEXTS.npc_debrief.burnout_text:UI_TEXTS.npc_debrief.burnout_text_short}</div>`;
+  }
+  // Feedback di negoziazione (RAL) — leva accumulata per la prossima
+  // trattativa, non un guadagno immediato: vedi computeRAL()/grantOfficialLevel().
+  let ralBlock='';
+  if(ralLeverageDelta!==0){
+    const pct=Math.round(Math.abs(ralLeverageDelta)*100);
+    const col=ralLeverageDelta>0?'#6af7c8':'#f76a6a';
+    const icon=ralLeverageDelta>0?'📈':'📉';
+    const sign=ralLeverageDelta>0?'+':'-';
+    ralBlock=`<div style="margin-top:.5rem;font-size:.72rem;color:${col}">${icon} ${sign}${pct}% di leva per la prossima trattativa salariale</div>`;
+  }
+  // Feedback di fatturato P.IVA — scomposizione visibile (giorni × tariffa)
+  // così il nesso scelta→guadagno è leggibile, non un numero magico (§8.2).
+  const revenueBlock=revenueResults.map(r=>{
+    if(r.kind==='reputation'){
+      const pct=Math.round(Math.abs(r.delta)*100);
+      const col=r.delta>0?'#6af7c8':'#f76a6a';
+      const icon=r.delta>0?'📈':'📉';
+      const sign=r.delta>0?'+':'-';
+      return `<div style="margin-top:.5rem;font-size:.72rem;color:${col}">${icon} ${sign}${pct}% sul tuo tariffario per i prossimi contratti</div>`;
+    }
+    return `<div style="margin-top:.5rem;font-size:.72rem;color:#6af7c8">💰 +${r.value.toLocaleString('it-IT')}€ di fatturato (${r.days} giorni × ${r.dayRate.toLocaleString('it-IT')}€/giorno) — totale ${r.fatturatoTotale.toLocaleString('it-IT')}€</div>`;
+  }).join('');
   document.getElementById('dlLayer').innerHTML=`
   <div class="dl-ov">
     <div class="dl-box debrief">
@@ -1141,6 +1278,7 @@ function showDebrief(def,res){
         <div class="db-lbl">${UI_TEXTS.npc_debrief.section_outcome}</div>
         <div style="font-size:.8rem;margin-bottom:.38rem;color:#e8e8f8">${res.msg}</div>
         <div class="st-pills">${pills}</div>
+        ${ralBlock}${revenueBlock}${burnoutBlock}
       </div>
       <button class="btn-next" id="btnCloseDb">${UI_TEXTS.npc_debrief.btn_continue}</button>
     </div>
@@ -1225,13 +1363,22 @@ function enterWorld(worldId){
   const saved=isAuthenticated()?ST.worldsProgress[worldId]:null;
   const existingOfficial=ST.worldsProgress[worldId];
   ST.world=saved
-    ? {id:worldId,visited:[...saved.visited],choices:[...saved.choices],patterns:[...saved.patterns],track:saved.track||null,officialLevel:saved.officialLevel||0,officialRAL:saved.officialRAL??null}
-    : {id:worldId,visited:[],choices:[],patterns:[],track:null,officialLevel:existingOfficial?.officialLevel||0,officialRAL:existingOfficial?.officialRAL??null};
+    ? {id:worldId,visited:[...saved.visited],choices:[...saved.choices],patterns:[...saved.patterns],track:saved.track||null,officialLevel:saved.officialLevel||0,officialRAL:saved.officialRAL??null,pivaState:saved.pivaState||null}
+    : {id:worldId,visited:[],choices:[],patterns:[],track:null,officialLevel:existingOfficial?.officialLevel||0,officialRAL:existingOfficial?.officialRAL??null,pivaState:existingOfficial?.pivaState||null};
   // Primo ingresso mai in questo mondo: livello 1 "ufficiale" gratuito, come
   // essere assunte — nessun colloquio richiesto solo per iniziare. Il
   // colloquio serve per salire di livello o cambiare mondo (§9/§4).
   if(!existingOfficial?.officialLevel){
     grantOfficialLevel(worldId,1,null,{free:true});
+  }
+  // P.IVA non ha un datore di lavoro che assegna una RAL: il fatturato si
+  // costruisce contratto per contratto (vedi applyRevenueEffect() in
+  // handleChoice()). officialRAL qui rappresenta il fatturato live, non una
+  // stima di mercato — parte da 0 alla primissima volta, altrimenti riprende
+  // da dove era rimasto (persistito in ST.worldsProgress come tutto il resto).
+  if(worldId==='piva'&&!ST.world.pivaState){
+    ST.world.pivaState=createPivaState();
+    ST.world.officialRAL=0;
   }
   const label=wdef.label||worldId.toUpperCase();
   show('game');renderHUD(label);
@@ -1278,7 +1425,11 @@ function grantOfficialLevel(worldId,targetLevel,track,opts={}){
   // di un premio cumulativo illimitato — vedi computeRAL() per il "target"
   // di mercato puro.
   const clsKey=ST.char?.cls||'explorer';
-  const targetRAL=computeRAL(worldId,clsKey,targetLevel);
+  // ralModifier: leva di negoziazione accumulata dai dialoghi (ralEffect,
+  // vedi handleChoice()) — si consuma qui e si azzera subito dopo, non dura
+  // oltre la prossima trattativa.
+  const targetRAL=computeRAL(worldId,clsKey,targetLevel,ST.career.ralModifier);
+  ST.career.ralModifier=0;
   const anchorRAL=prevWorldId
     ? (ST.worldsProgress[prevWorldId]?.officialRAL??null)
     : (existing.officialRAL??null);
@@ -1292,7 +1443,7 @@ function grantOfficialLevel(worldId,targetLevel,track,opts={}){
   }
 
   const merged={visited,patterns:[...existing.patterns],choices:[...existing.choices],track:finalTrack,
-    officialLevel:targetLevel,officialRAL:newRAL};
+    officialLevel:targetLevel,officialRAL:newRAL,pivaState:existing.pivaState??null};
   ST.worldsProgress[worldId]=merged;
   if(ST.world.id===worldId){
     ST.world.visited=merged.visited;ST.world.choices=merged.choices;ST.world.track=merged.track;
@@ -1450,6 +1601,13 @@ function showJobChangePicker(fixedWorldId){
         <label style="font-size:.66rem;color:var(--muted)">Mondo
           <select id="jcWorld" style="${selStyle}">${Object.entries(WORLD_DEFS).filter(([wid])=>wid!=='piva').map(([wid,wdef])=>`<option value="${wid}"${wid===ST.world.id?' selected':''}>${wdef.label||wid}</option>`).join('')}</select>
         </label>`;
+  // Readiness (SKILL/VOICE/CLARITY, vedi computeReadiness() in
+  // career-world-data.js): solo un suggerimento pre-selezionato nel
+  // dropdown, non un vincolo — il colloquio resta l'unico vero gate.
+  const readiness=computeReadiness(ST.gs);
+  const readinessTier=tierFromReadiness(readiness);
+  const suggestedLevel=readinessTier==='junior'?1:readinessTier==='mid'?2:3;
+  const readinessLabel={junior:'junior',mid:'mid',senior:'senior',lead:'lead'}[readinessTier];
   const overlay=document.createElement('div');
   overlay.className='wi-ov';
   overlay.style.cssText='position:fixed;inset:0;z-index:500;';
@@ -1458,13 +1616,14 @@ function showJobChangePicker(fixedWorldId){
       <div class="wi-emoji">💼</div>
       <div class="wi-title" style="color:var(--accent3)">${isFixed?'Tenta un ruolo più senior?':'Cambia lavoro'}</div>
       <div class="wi-what">${isFixed?'Puoi sostenere un colloquio per iniziare questo mondo da un livello più alto, invece che da junior.':'Scegli il mondo e il livello a cui vuoi ambire.'} Se superi il colloquio, quel ruolo è tuo.</div>
+      <div style="font-size:.62rem;color:var(--muted);margin-top:.4rem">📊 In base alle tue statistiche attuali (SKILL/VOICE/CLARITY), la tua readiness suggerisce il livello ${suggestedLevel} (${readinessLabel}) — puoi comunque tentarne un altro.</div>
       <div style="display:flex;flex-direction:column;gap:.6rem;margin-top:1rem;text-align:left">
         ${worldFieldHtml}
         <label style="font-size:.66rem;color:var(--muted)">Livello a cui ambisci
           <select id="jcLevel" style="${selStyle}">
-            <option value="1">Livello 1</option>
-            <option value="2" selected>Livello 2</option>
-            <option value="3">Livello 3</option>
+            <option value="1"${suggestedLevel===1?' selected':''}>Livello 1</option>
+            <option value="2"${suggestedLevel===2?' selected':''}>Livello 2</option>
+            <option value="3"${suggestedLevel===3?' selected':''}>Livello 3</option>
           </select>
         </label>
         <div id="jcTrackWrap" style="display:none">
@@ -1541,7 +1700,7 @@ function closeDebrief(){
   const leveledUp=syncNewlyVisibleNpcs();
   updHUD();
   ST.worldsProgress[ST.world.id]={visited:[...ST.world.visited],choices:[...ST.world.choices],patterns:[...ST.world.patterns],track:ST.world.track,
-    officialLevel:ST.world.officialLevel||0,officialRAL:ST.world.officialRAL??null};
+    officialLevel:ST.world.officialLevel||0,officialRAL:ST.world.officialRAL??null,pivaState:ST.world.pivaState??null};
   saveProgress(ST).catch(e=>console.warn('save failed',e));
   if(leveledUp){
     // Esplorare sblocca il contenuto gratis, ma non aggiorna da sola
@@ -1656,7 +1815,12 @@ function doExit(exitDef){
   player=null;cursors=null;actKey=null;zKey=null;scn=null;
   if(!ST.worldHistory.includes(ST.world.id))ST.worldHistory.push(ST.world.id);
   ST.worldPath=exitDef.id;
-  ST.worldsProgress[ST.world.id]={visited:[...ST.world.visited],choices:[...ST.world.choices],patterns:[...ST.world.patterns],track:ST.world.track};
+  // officialLevel/officialRAL/pivaState vanno preservati anche qui — questa
+  // stessa riga li perdeva silenziosamente ad ogni uscita da un mondo
+  // (bug preesistente, notato mentre si integrava il fatturato P.IVA: senza
+  // questo fix il fatturato costruito spariva uscendo dalla porta "FINE").
+  ST.worldsProgress[ST.world.id]={visited:[...ST.world.visited],choices:[...ST.world.choices],patterns:[...ST.world.patterns],track:ST.world.track,
+    officialLevel:ST.world.officialLevel||0,officialRAL:ST.world.officialRAL??null,pivaState:ST.world.pivaState??null};
   saveProgress(ST).catch(e=>console.warn('save failed',e));
   showWorldDebrief();
 }
@@ -1738,11 +1902,11 @@ function renderOutcome(){
 // per questo è sempre preceduto da confirmReset().
 function performFullReset(){
   ST.step=0;ST.ans={hard:{},soft:{},pref:{}};
-  ST.char=null;ST.gs={SKILL:0,VOICE:0,CLARITY:0,NETWORK:0,ENERGY:10,RADAR:0,INSIDER:0};
-  ST.world={id:null,visited:[],choices:[],patterns:[],track:null,officialLevel:0,officialRAL:null};
+  ST.char=null;ST.gs={SKILL:0,VOICE:0,CLARITY:0,NETWORK:0,ENERGY:STAT_MAX.ENERGY,RADAR:0,INSIDER:0};
+  ST.world={id:null,visited:[],choices:[],patterns:[],track:null,officialLevel:0,officialRAL:null,pivaState:null};
   ST.worldsProgress={};
   ST.worldPath=null;ST.worldHistory=[];
-  ST.recalibrated=false;
+  ST.recalibrated=false;ST.burnoutWarned=false;ST.career={ralModifier:0};
   resetProgress().catch(e=>console.warn('reset failed',e));
   gameRunning=false;evActive=false;exitTriggered=false;
   if(PG){try{PG.destroy(true);}catch(e){}PG=null;}
@@ -1756,9 +1920,9 @@ function performFullReset(){
 async function doLogout(){
   try{ await signOut(); }catch(e){ console.warn('logout failed',e); }
   ST.step=0;ST.ans={hard:{},soft:{},pref:{}};
-  ST.char=null;ST.gs={SKILL:0,VOICE:0,CLARITY:0,NETWORK:0,ENERGY:12,RADAR:0,INSIDER:0};
-  ST.world={id:null,visited:[],choices:[],patterns:[],track:null,officialLevel:0,officialRAL:null};
-  ST.worldsProgress={};ST.worldPath=null;ST.worldHistory=[];ST.recalibrated=false;
+  ST.char=null;ST.gs={SKILL:0,VOICE:0,CLARITY:0,NETWORK:0,ENERGY:STAT_MAX.ENERGY,RADAR:0,INSIDER:0};
+  ST.world={id:null,visited:[],choices:[],patterns:[],track:null,officialLevel:0,officialRAL:null,pivaState:null};
+  ST.worldsProgress={};ST.worldPath=null;ST.worldHistory=[];ST.recalibrated=false;ST.burnoutWarned=false;ST.career={ralModifier:0};
   gameRunning=false;evActive=false;exitTriggered=false;
   if(PG){try{PG.destroy(true);}catch(e){}PG=null;}
   player=null;cursors=null;scn=null;
@@ -1922,7 +2086,7 @@ export async function boot(){
       ST.worldHistory=saved.worldHistory;
       // ??0/??null: righe salvate prima dell'introduzione di officialLevel/RAL
       // (vedi §9) non hanno questi campi — non farle esplodere in HUD.
-      ST.world={officialLevel:0,officialRAL:null,...saved.world};
+      ST.world={officialLevel:0,officialRAL:null,pivaState:null,...saved.world};
       ST.worldsProgress=saved.worldsProgress||{};
       ST.char=saved.char;
       ST.recalibrated=saved.recalibrated??saved.graduated??false;

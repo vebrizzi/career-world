@@ -20,7 +20,7 @@ async function afterAuthSuccess() {
     ST.gs = saved.gs;
     ST.worldHistory = saved.worldHistory;
     // ??0/??null: righe salvate prima di officialLevel/RAL (vedi §9) non li hanno.
-    ST.world = { officialLevel: 0, officialRAL: null, ...saved.world };
+    ST.world = { officialLevel: 0, officialRAL: null, pivaState: null, ...saved.world };
     ST.worldsProgress = saved.worldsProgress || {};
     ST.char = saved.char;
     ST.recalibrated = saved.recalibrated ?? saved.graduated ?? false;

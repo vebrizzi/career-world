@@ -94,7 +94,9 @@ export const UI_TEXTS = {
     section_pattern:'📋 PATTERN RICONOSCIUTO',
     section_outcome:'⚡ ESITO',
     btn_continue:'Continua →',
-    radar_gain_label:'RADAR +1'
+    radar_gain_label:'RADAR +1',
+    burnout_text:'La tua energia è a zero. Non è un game over: è il segnale che il ritmo tenuto finora non è sostenibile. Nella vita reale il burnout è riconosciuto dall\'OMS come fenomeno occupazionale (ICD-11, 2019) — non un limite personale, ma l\'esito di uno squilibrio prolungato tra richieste e risorse. Cerca un\'alleata 🤝 o una sfida tecnica 💻 per recuperare energia.',
+    burnout_text_short:'⚠️ Energia ancora a zero — cerca un\'alleata o una sfida tecnica per recuperare.'
   },
   outcome:{
     emoji:'🗺️',
@@ -123,6 +125,20 @@ export const UI_TEXTS = {
   progress:{
     status_open:'🔓 APERTA',
     status_locked_prefix:'🔒'
+  },
+  stat_info:{
+    title:'Cosa significano le statistiche',
+    intro:'Ogni statistica racconta due cose insieme: cosa fa nel gioco, e cosa rappresenta davvero nel mercato del lavoro.',
+    btn_close:'Chiudi',
+    stats:{
+      SKILL:{game:'Competenze tecniche dimostrate dalle tue scelte (Python, SQL, ML, cloud...).',life:'Le competenze che sai davvero mettere in pratica con esempi concreti — non solo "conoscere" uno strumento.'},
+      VOICE:{game:'Capacità di esprimerti e tenere la posizione nei dialoghi.',life:'Quanto ti senti autorizzata a parlare in una riunione, dire no, negoziare — spesso frenata da bias esterni più che da mancanza di competenza.'},
+      CLARITY:{game:'Chiarezza su te stessa e sul contesto in cui ti muovi.',life:'Capacità di leggere una situazione ambigua (un feedback vago, un conflitto) senza confonderla con l\'auto-svalutazione.'},
+      NETWORK:{game:'Rete professionale e alleanze. Parte sempre al minimo: si costruisce solo scegliendo risposte che creano una relazione.',life:'Le persone che ti aiutano a scoprire opportunità e a non essere sola nelle difficoltà — va costruita attivamente, non capita per caso.'},
+      ENERGY:{game:'Risorsa che si consuma a ogni interazione, cala il doppio quando ascolti la voce interiore critica, risale parlando con le alleate o affrontando una sfida tecnica. Parte sempre dal massimo.',life:'La sostenibilità del tuo percorso: ignorarla porta al burnout, prendersene cura è una competenza — non una debolezza.'},
+      RADAR:{game:'Lettura delle dinamiche di sistema e dei pattern di bias. Sale un po\' a ogni interazione, parte bassa per tutte.',life:'Riconoscere quando una difficoltà non è colpa tua ma un pattern strutturale che si ripete a molte altre persone.'},
+      INSIDER:{game:'Conoscenza delle procedure e della politica interna del posto in cui sei.',life:'Il "sapere non scritto" che si accumula solo restando in un contesto, e che in parte si perde cambiando azienda.'}
+    }
   }
 };
 
@@ -380,16 +396,136 @@ export const WORLD_CAREER_LEVELS={
 };
 
 // ══════════════════════════════════════════════════════════════
-// RAL — stima indicativa su dati medi di mercato IT italiano, per
-// livello di seniority raggiunto nel mondo corrente, classe (profilo)
-// e contesto (mondo). Non è un dato reale/verificato, solo una stima
-// pedagogica per dare concretezza alla progressione di carriera.
-// Letta da computeRAL() in src/game/game.js.
+// RAL — stima indicativa su dati medi di mercato IT italiano (settembre
+// 2026, vedi metodo/fonti in fondo al file), per ruolo × livello di
+// seniority raggiunto × area/contesto. Non è un dato reale/verificato,
+// solo una stima pedagogica per dare concretezza alla progressione di
+// carriera. Letta da computeRAL() in src/game/game.js — il livello
+// numerico per-mondo (1/2/3, vedi WORLD_CAREER_LEVELS) è mappato a
+// junior/mid/senior tramite RAL_LEVEL_BY_TIER lì.
 // ══════════════════════════════════════════════════════════════
-export const RAL_BASE_BY_LEVEL={1:26000,2:36000,3:52000};
-export const RAL_CLASS_MULTIPLIER={analyst:0.95,scientist:1.05,ml:1.15,ai:1.2,dataeng:1.1,explorer:0.9};
-export const RAL_WORLD_MULTIPLIER={pmi:0.9,startup:1.0,consulenza:1.08,corporate:1.15,piva:1.0,pa:0.85};
+export const RAL_BASE={
+  analyst:{junior:[26000,32000],mid:[32000,40000],senior:[40000,50000],lead:[50000,65000]},
+  scientist:{junior:[28000,36000],mid:[38000,50000],senior:[50000,68000],lead:[70000,95000]},
+  ml:{junior:[30000,38000],mid:[42000,55000],senior:[58000,78000],lead:[80000,105000]},
+  ai:{junior:[30000,38000],mid:[42000,58000],senior:[60000,80000],lead:[85000,110000]},
+  // 'dataeng' non è nella survey originale (vedi fonti in fondo al file):
+  // range stimato per estrapolazione, in linea con ml (pipeline/infra dati
+  // vs modelli, seniority paragonabile sul mercato italiano).
+  dataeng:{junior:[29000,37000],mid:[40000,53000],senior:[55000,74000],lead:[76000,100000]},
+};
+// Moltiplicatori per area/contesto — applicati a RAL_BASE. Stima informata
+// per triangolazione (nessuna survey unica copre ruolo × livello ×
+// tipo-azienda per data/AI in Italia): ordine di grandezza narrativo per il
+// gioco, non un dato certificato. piva non ha un min/max RAL (non è
+// stipendio ma tariffa/giorno) — vedi PIVA_DAYRATE più sotto.
+export const AREA_MULTIPLIER={
+  pmi:        { min: 0.80, max: 0.90, note: 'Sotto mercato; ruolo spesso ibrido/poco definito, meno leva negoziale su RAL pura' },
+  startup:    { min: 0.85, max: 1.10, note: 'Alta varianza: early-stage spesso sotto mercato + equity; growth-stage può pagare sopra mercato per profili scarsi (ML/AI)' },
+  consulenza: { min: 0.90, max: 1.00, note: 'RAL contenuta a junior/mid ma progressione rapida (promozioni ogni 1.5-2 anni); bonus discrezionali a partire da senior' },
+  corporate:  { min: 1.05, max: 1.20, note: 'RAL più alte e strutturate, benefit più ricchi, doppia carriera tecnica/manageriale a livello senior' },
+  pa:         { min: 0.55, max: 0.75, note: 'Sensibilmente sotto il privato; tabellare CCNL Istruzione e Ricerca — ricercatore/tecnologo parte ~24-28k, sale a ~35-45k con anzianità/livelli avanzati' },
+  piva:       { model: 'tariffa giornaliera', note: 'Non RAL ma tariffa/giorno — vedi PIVA_DAYRATE' },
+};
+// Mappa il livello numerico per-mondo (1/2/3, vedi WORLD_CAREER_LEVELS e
+// showJobChangePicker() in game.js) al tier usato da RAL_BASE. Non esiste
+// un livello 4 raggiungibile via colloquio oggi, quindi 'lead' resta fuori
+// da questa mappa: è comunque usato da tierFromReadiness() per l'indicatore
+// di readiness (vedi sotto), che è puramente informativo.
+export const RAL_LEVEL_BY_TIER={1:'junior',2:'mid',3:'senior'};
+// Range RAL stimato per ruolo+livello+area (null se l'area non ha un
+// min/max RAL diretto, es. piva — vedi PIVA_DAYRATE).
+export function computeOfferRange(role,level,area){
+  const base=RAL_BASE[role]?.[level];
+  const mult=AREA_MULTIPLIER[area];
+  if(!base||!mult||mult.model)return null;
+  return [Math.round(base[0]*mult.min),Math.round(base[1]*mult.max)];
+}
 export const RAL_LABEL_BY_WORLD={piva:'Fatturato annuo stimato'}; // default: 'RAL stimata'
+
+// ── Indicatore di readiness professionale (solo informativo — non blocca
+// né sostituisce il colloquio, vedi showJobChangePicker() in game.js) ──
+// Mix pesato di competenza tecnica (SKILL) e capacità professionale/
+// relazionale (VOICE, CLARITY), sulla stessa scala 0-50 di STAT_MAX.
+export const READINESS_THRESHOLDS={mid:18,senior:30,lead:40};
+export function computeReadiness(gs){
+  return 0.5*(gs.SKILL||0)+0.25*(gs.VOICE||0)+0.25*(gs.CLARITY||0);
+}
+export function tierFromReadiness(r){
+  if(r>=READINESS_THRESHOLDS.lead)return 'lead';
+  if(r>=READINESS_THRESHOLDS.senior)return 'senior';
+  if(r>=READINESS_THRESHOLDS.mid)return 'mid';
+  return 'junior';
+}
+
+// ── P.IVA / freelance — il fatturato si costruisce, non si riceve ──────
+// A differenza degli altri mondi (dove la RAL è "assegnata" da un
+// colloquio), in P.IVA non esiste un datore di lavoro che assegna uno
+// stipendio: il fatturato cresce contratto dopo contratto, in base a come
+// la giocatrice gestisce ogni cliente (vedi revenueEffect sui nodi
+// piva_contratto/piva_tech2/piva_level2_pricing/piva_level2_scope, e
+// handleChoice() in game.js che li applica).
+// Tariffa/giorno di riferimento per livello — non più usata per calcolare
+// il valore dei contratti (vedi PIVA_FEE_STEPS sotto), resta solo come dato
+// per pivaAnnualEquivalent() (range di confronto informativo).
+export const PIVA_DAYRATE={junior:[150,250],mid:[250,400],senior:[400,700],lead:[700,1000]};
+export const PIVA_BILLABLE_DAYS=200; // stima gg fatturabili/anno, solo come riferimento
+export function createPivaState(){
+  return {fatturato:0,reputationMultiplier:1,contracts:[],concentrationRisk:0};
+}
+// Tariffa/giorno che il mercato riconosce a una freelance: cresce col
+// track record (quanti contratti ha già chiuso in questo mondo), non con
+// il livello di carriera raggiunto altrove — 1° contratto 250€/gg, poi
+// 500, poi 750, dal 4° in poi resta a 1000€/gg (tetto).
+export const PIVA_FEE_STEPS=[250,500,750,1000];
+export function feeForContract(contractIndex){
+  return PIVA_FEE_STEPS[Math.min(Math.max(contractIndex,0),PIVA_FEE_STEPS.length-1)];
+}
+// Valore di un contratto = tariffa del contratto (in base a quanti ne ha
+// già chiusi, vedi feeForContract) × giorni impegnati × qualità della
+// scelta × reputazione accumulata nel mondo fino a quel momento
+// (compounding) — il fatturato riparte comunque da zero ad ogni ingresso.
+export function contractValue(contractIndex,days,quality,reputationMultiplier){
+  const dayRate=feeForContract(contractIndex);
+  return Math.round(dayRate*days*(quality!=null?quality:1)*(reputationMultiplier||1));
+}
+// Applica un revenueEffect (da un nodo di dialogo P.IVA) allo stato:
+// {type:'contract', days, quality} aggiunge un contratto al fatturato;
+// {type:'reputation', delta} alza (o abbassa, delta negativo) il
+// moltiplicatore per i contratti successivi.
+export function applyRevenueEffect(pivaState,revenueEffect){
+  if(!revenueEffect)return null;
+  if(revenueEffect.type==='reputation'){
+    pivaState.reputationMultiplier=Math.max(0.5,(pivaState.reputationMultiplier||1)*(1+revenueEffect.delta));
+    return {kind:'reputation',multiplier:pivaState.reputationMultiplier,delta:revenueEffect.delta};
+  }
+  const value=contractValue(pivaState.contracts.length,revenueEffect.days,revenueEffect.quality,pivaState.reputationMultiplier);
+  pivaState.fatturato+=value;
+  pivaState.contracts.push({value,days:revenueEffect.days,quality:revenueEffect.quality});
+  if(revenueEffect.concentration){
+    pivaState.concentrationRisk=Math.max(pivaState.concentrationRisk,revenueEffect.concentration);
+  }
+  return {kind:'contract',value,days:revenueEffect.days,dayRate:Math.round(value/revenueEffect.days),fatturatoTotale:pivaState.fatturato};
+}
+// Range "di riferimento" (non vincolante) per confrontare il fatturato
+// costruito con quanto guadagna tipicamente un freelance di quel livello —
+// solo per mostrare in UI "sei sopra/sotto la media del tuo livello".
+export function pivaAnnualEquivalent(level){
+  const rate=PIVA_DAYRATE[level]||PIVA_DAYRATE.mid;
+  return [rate[0]*PIVA_BILLABLE_DAYS,rate[1]*PIVA_BILLABLE_DAYS];
+}
+// Converte il fatturato REALMENTE costruito in gioco in una RAL-equivalente
+// di riferimento (solo informativa nel debrief di fine mondo, vedi
+// showWorldDebrief() in game.js — NON sovrascrive mai ST.world.officialRAL
+// altrove: un fatturato variabile non è un'offerta di un datore di lavoro).
+// Sconto per contributi a carico, assenza ferie/TFR, e prudenza del
+// recruiter su reddito variabile; il rischio di concentrazione (dipendere
+// da un solo cliente) peggiora ulteriormente lo sconto.
+export const PIVA_TO_RAL_DISCOUNT=0.65;
+export function finalizePivaEquivalent(pivaState){
+  const concentrationPenalty=1-(pivaState.concentrationRisk||0)*0.15;
+  return Math.round(pivaState.fatturato*PIVA_TO_RAL_DISCOUNT*concentrationPenalty);
+}
 
 // Dimensione indicativa del contesto (0-5), usata per calcolare il bonus di
 // NETWORK quando si cambia lavoro (vedi grantOfficialLevel() in game.js): più
@@ -3169,10 +3305,10 @@ export const PMI_AUTH_ADDITIONS = [
         {t:'Guardo il dato, ma prima di usarlo verifico se il mio ruolo attuale è davvero comparabile a quello che sto guardando.',out:'verify'},
       ]},
     outs:{
-      use:    {msg:'Hai trasformato un dato di mercato in una richiesta concreta. +SKILL +VOICE',stat:{SKILL:1,VOICE:2}},
+      use:    {msg:'Hai trasformato un dato di mercato in una richiesta concreta. +SKILL +VOICE',stat:{SKILL:1,VOICE:2},ralEffect:{delta:0.05}},
       hesitate:{msg:'Il dato resta utile anche solo per calibrare le tue aspettative. +CLARITY',stat:{CLARITY:1}},
       share:  {msg:'La trasparenza salariale tra colleghe riduce il gender pay gap informativo. +NETWORK +RADAR',stat:{NETWORK:2,RADAR:2}},
-      verify: {msg:'Verificare la comparabilità evita di portare al manager un confronto facilmente smontabile. +CLARITY +RADAR',stat:{CLARITY:1,RADAR:2}},
+      verify: {msg:'Verificare la comparabilità evita di portare al manager un confronto facilmente smontabile. +CLARITY +RADAR',stat:{CLARITY:1,RADAR:2},ralEffect:{delta:0.03}},
     },
     db:{pat:'La trasparenza salariale come leva contro il pay gap',
       ins:'L\'asimmetria informativa sui salari è uno dei meccanismi che perpetua il gender pay gap: chi ha accesso a dati di benchmark negozia meglio.',
@@ -3463,10 +3599,10 @@ export const CONSULENZA_ADDITIONS = [
         {t:'Chiedo semplicemente se il mio peer group include anche i colleghi uomini allo stesso livello, o è definito diversamente.',out:'peer_scope'},
       ]},
     outs:{
-      data:    {msg:'Chiedi dati aggregati. +VOICE +CLARITY',stat:{VOICE:2,CLARITY:1}},
-      redirect:{msg:'Sposti il focus sulla progressione. +CLARITY +RADAR',stat:{CLARITY:1,RADAR:1}},
-      external:{msg:'Usi dati di mercato come leverage. +VOICE +SKILL',stat:{VOICE:2,SKILL:1}},
-      peer_scope:{msg:'Metti alla prova la definizione stessa del confronto. +RADAR +VOICE',stat:{RADAR:2,VOICE:1}},
+      data:    {msg:'Chiedi dati aggregati. +VOICE +CLARITY',stat:{VOICE:2,CLARITY:1},ralEffect:{delta:0.05}},
+      redirect:{msg:'Sposti il focus sulla progressione. +CLARITY +RADAR',stat:{CLARITY:1,RADAR:1},ralEffect:{delta:0.02}},
+      external:{msg:'Usi dati di mercato come leverage. +VOICE +SKILL',stat:{VOICE:2,SKILL:1},ralEffect:{delta:0.07}},
+      peer_scope:{msg:'Metti alla prova la definizione stessa del confronto. +RADAR +VOICE',stat:{RADAR:2,VOICE:1},ralEffect:{delta:0.05}},
     },
     db:{pat:'Il gender pay gap nelle consulenze e come negoziare con dati',
       ins:'La mancanza di trasparenza salariale è il meccanismo principale attraverso cui il gender pay gap si mantiene nelle consulenze.',
@@ -3814,10 +3950,10 @@ export const PIVA_ADDITIONS = [
         {t:'Chiedo di separare le due clausole: negozio prima l\'esclusiva, poi separatamente i giorni di pagamento.',out:'separate'},
       ]},
     outs:{
-      reprice:         {msg:'Colleghi le condizioni contrattuali al prezzo. +VOICE +CLARITY',stat:{VOICE:2,CLARITY:1}},
-      reject_exclusive:{msg:'Linea chiara su ciò che non è negoziabile. +VOICE +ENERGY',stat:{VOICE:2,ENERGY:1}},
-      negotiate:       {msg:'Proponi alternative concrete. +VOICE +SKILL +CLARITY',stat:{VOICE:1,SKILL:1,CLARITY:2}},
-      separate:        {msg:'Scomponi il pacchetto per negoziare ogni clausola sul proprio merito. +VOICE +CLARITY',stat:{VOICE:1,CLARITY:2}},
+      reprice:         {msg:'Colleghi le condizioni contrattuali al prezzo. +VOICE +CLARITY',stat:{VOICE:2,CLARITY:1},revenueEffect:{type:'contract',days:60,quality:1.15}},
+      reject_exclusive:{msg:'Linea chiara su ciò che non è negoziabile. +VOICE +ENERGY',stat:{VOICE:2,ENERGY:1},revenueEffect:[{type:'contract',days:50,quality:1.0},{type:'reputation',delta:0.05}]},
+      negotiate:       {msg:'Proponi alternative concrete. +VOICE +SKILL +CLARITY',stat:{VOICE:1,SKILL:1,CLARITY:2},revenueEffect:[{type:'contract',days:58,quality:1.10},{type:'reputation',delta:0.03}]},
+      separate:        {msg:'Scomponi il pacchetto per negoziare ogni clausola sul proprio merito. +VOICE +CLARITY',stat:{VOICE:1,CLARITY:2},revenueEffect:{type:'contract',days:55,quality:1.05}},
     },
     db:{pat:'Le clausole contrattuali abusive e la negoziazione per freelance',
       ins:'Le clausole di esclusiva e i termini di pagamento a 90+ giorni sono tra le condizioni contrattuali più problematiche per i freelance.',
@@ -3868,10 +4004,13 @@ export const PIVA_ADDITIONS = [
         {t:'Comincio con prompt engineering su GPT-4 per validare il caso d\'uso in una settimana, poi decido se serve altro.',out:'validate_fast'},
       ]},
     outs:{
-      rag:       {msg:'Scelta corretta e ben motivata. +SKILL +CLARITY',stat:{SKILL:2,CLARITY:1}},
-      depends:   {msg:'Risposta sfumata che mostra comprensione profonda. +SKILL +RADAR',stat:{SKILL:2,RADAR:1}},
-      data_first:{msg:'Dati prima dell\'architettura. +SKILL +CLARITY +RADAR',stat:{SKILL:1,CLARITY:2,RADAR:1}},
-      validate_fast:{msg:'Il più veloce da validare, ma può non reggere a lungo termine su costi/qualità. +SKILL +CLARITY',stat:{SKILL:1,CLARITY:2}},
+      // Budget e giorni sono fissati dal cliente (25k€/8 settimane, citati
+      // nel testo): la scelta tecnica non cambia il contratto corrente, ma
+      // la qualità della delivery costruisce (o meno) reputazione futura.
+      rag:       {msg:'Scelta corretta e ben motivata. +SKILL +CLARITY',stat:{SKILL:2,CLARITY:1},revenueEffect:[{type:'contract',days:40,quality:1.0},{type:'reputation',delta:0.03}]},
+      depends:   {msg:'Risposta sfumata che mostra comprensione profonda. +SKILL +RADAR',stat:{SKILL:2,RADAR:1},revenueEffect:[{type:'contract',days:40,quality:1.0},{type:'reputation',delta:0.05}]},
+      data_first:{msg:'Dati prima dell\'architettura. +SKILL +CLARITY +RADAR',stat:{SKILL:1,CLARITY:2,RADAR:1},revenueEffect:[{type:'contract',days:40,quality:1.0},{type:'reputation',delta:0.07}]},
+      validate_fast:{msg:'Il più veloce da validare, ma può non reggere a lungo termine su costi/qualità. +SKILL +CLARITY',stat:{SKILL:1,CLARITY:2},revenueEffect:[{type:'contract',days:40,quality:1.0},{type:'reputation',delta:0.02}]},
     },
     db:{pat:'RAG vs fine-tuning vs prompt engineering: quando usare cosa',
       ins:'Fine-tuning ha senso solo con dati di training di alta qualità (10k+ esempi supervisionati). RAG è più flessibile, aggiornabile, e interpretabile.',
@@ -3892,10 +4031,10 @@ export const PIVA_LEVEL2_ADDITIONS = [
         {t:'Chiedo al cliente con quali altri freelance ha parlato e cosa includevano le loro tariffe.',out:'benchmark_ask'},
       ]},
     outs:{
-      hold:{msg:'Difendere il prezzo spiegando il valore, senza svendersi, protegge anche i tuoi prossimi preventivi. +VOICE +CLARITY',stat:{VOICE:2,CLARITY:1}},
-      discount:{msg:'Ogni sconto concesso sotto pressione diventa il nuovo punto di riferimento per le trattative successive. -VOICE',stat:{VOICE:-1}},
-      scope:{msg:'Hai protetto il valore orario riducendo il perimetro — una tecnica di negoziazione più sostenibile dello sconto secco. +CLARITY +RADAR',stat:{CLARITY:2,RADAR:1}},
-      benchmark_ask:{msg:'Verifichi se il confronto è davvero comparabile prima di reagire al prezzo. +RADAR +CLARITY',stat:{RADAR:2,CLARITY:1}},
+      hold:{msg:'Difendere il prezzo spiegando il valore, senza svendersi, protegge anche i tuoi prossimi preventivi. +VOICE +CLARITY',stat:{VOICE:2,CLARITY:1},revenueEffect:{type:'contract',days:20,quality:1.15}},
+      discount:{msg:'Ogni sconto concesso sotto pressione diventa il nuovo punto di riferimento per le trattative successive. -VOICE',stat:{VOICE:-1},revenueEffect:{type:'contract',days:20,quality:0.85}},
+      scope:{msg:'Hai protetto il valore orario riducendo il perimetro — una tecnica di negoziazione più sostenibile dello sconto secco. +CLARITY +RADAR',stat:{CLARITY:2,RADAR:1},revenueEffect:{type:'contract',days:16,quality:1.05}},
+      benchmark_ask:{msg:'Verifichi se il confronto è davvero comparabile prima di reagire al prezzo. +RADAR +CLARITY',stat:{RADAR:2,CLARITY:1},revenueEffect:{type:'contract',days:20,quality:1.05}},
     },
     db:{pat:'La tariffa come segnale di valore, non solo di costo',
       ins:'Scontare la tariffa sotto pressione insegna al mercato (e a te stessa) che il tuo prezzo è negoziabile all\'infinito — ridurre lo scope, non il prezzo orario, è spesso la via più sostenibile.',
@@ -3910,10 +4049,13 @@ export const PIVA_LEVEL2_ADDITIONS = [
         {t:'Faccio questa extra gratis, ma le mando comunque un riepilogo scritto di tutte le richieste extra fatte finora, senza fatturarle.',out:'log_free'},
       ]},
     outs:{
-      log:{msg:'Documentare prima di reagire ti dà dati concreti per la conversazione, invece di un\'impressione vaga. +CLARITY +SKILL',stat:{CLARITY:2,SKILL:1}},
-      free:{msg:'Il "piccolo extra gratis" ripetuto diventa un\'aspettativa implicita, non un favore occasionale. -VOICE',stat:{VOICE:-1}},
-      boundary:{msg:'Un confine esplicito, comunicato chiaramente, protegge la relazione a lungo termine meglio del silenzio accumulato. +VOICE +CLARITY',stat:{VOICE:2,CLARITY:1}},
-      log_free:{msg:'Costruisce un dato utile per dopo, ma non risolve subito il pattern. +CLARITY',stat:{CLARITY:2}},
+      // Cliente ricorrente = fatturato concentrato su una sola relazione:
+      // registra sempre il rischio di concentrazione (§8.3), indipendente
+      // da quanto bene la scelta gestisce la situazione.
+      log:{msg:'Documentare prima di reagire ti dà dati concreti per la conversazione, invece di un\'impressione vaga. +CLARITY +SKILL',stat:{CLARITY:2,SKILL:1},revenueEffect:{type:'contract',days:15,quality:1.05,concentration:0.6}},
+      free:{msg:'Il "piccolo extra gratis" ripetuto diventa un\'aspettativa implicita, non un favore occasionale. -VOICE',stat:{VOICE:-1},revenueEffect:{type:'contract',days:15,quality:0.85,concentration:0.6}},
+      boundary:{msg:'Un confine esplicito, comunicato chiaramente, protegge la relazione a lungo termine meglio del silenzio accumulato. +VOICE +CLARITY',stat:{VOICE:2,CLARITY:1},revenueEffect:{type:'contract',days:15,quality:1.10,concentration:0.6}},
+      log_free:{msg:'Costruisce un dato utile per dopo, ma non risolve subito il pattern. +CLARITY',stat:{CLARITY:2},revenueEffect:{type:'contract',days:15,quality:0.95,concentration:0.6}},
     },
     db:{pat:'Lo scope creep incrementale nei rapporti freelance di lunga durata',
       ins:'Lo scope creep raramente arriva come una richiesta grande ed evidente — cresce per piccoli incrementi, ognuno troppo piccolo per giustificare un confine.',

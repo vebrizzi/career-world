@@ -1,7 +1,9 @@
 import { supabase, getCurrentUser } from './supabaseClient.js';
 
 const DEFAULT_STATE = {
-  gs: { SKILL: 0, VOICE: 0, CLARITY: 0, NETWORK: 0, ENERGY: 12, RADAR: 0, INSIDER: 0 },
+  // ENERGY parte sempre al massimo (50, vedi STAT_MAX.ENERGY in game.js): è
+  // una risorsa che si consuma con le interazioni, non un tratto residuo.
+  gs: { SKILL: 0, VOICE: 0, CLARITY: 0, NETWORK: 0, ENERGY: 50, RADAR: 0, INSIDER: 0 },
   worldHistory: [],
   world: { id: null, visited: [], choices: [], patterns: [], track: null, officialLevel: 0, officialRAL: null },
   worldsProgress: {},

@@ -224,9 +224,16 @@ Per i guest la classe è calcolata da `computeChar()` sull'intero quiz (Fasi 1-3
 7 stat, tutte con **massimo 50** (`STAT_MAX` in `game.js`): `SKILL`, `VOICE`, `CLARITY`, `NETWORK`, `ENERGY`, `RADAR`, `INSIDER`.
 
 - **INSIDER** ("conoscenza procedure e politica interna") sale di **+2** a ogni interazione NPC completata (non con la critica interiore) — `closeDebrief()`. Ad un **cambio di azienda vero** (§5.5) si riduce al **30%** del valore (`INSIDER_RETENTION_RATIO=0.30`), non si azzera più; a una **promozione interna** resta invariato.
-- **RADAR** sale di +1 reale a ogni interazione (oltre al delta specifico della scelta).
-- Ogni delta stat definito su un NPC (`outs[].stat`) viene **moltiplicato ×2.5** prima di essere applicato (`const SCALE=2.5` in `handleChoice()`) — eccetto i valori negativi, che restano com'è.
+- **RADAR** parte da 3 e sale di +1 reale (`round(1*SCALE)`) a ogni interazione **solo se** la scelta non ha già un suo delta RADAR esplicito nei dati — altrimenti si applica solo quello (mai entrambi, altrimenti anche le penalità `RADAR:-1` finirebbero comunque in un netto positivo). Vedi `hasExplicitRadar` in `handleChoice()`.
+- **NETWORK** parte sempre al **minimo (0)** per tutte le classi — non è un tratto di personalità del quiz, si costruisce solo scegliendo risposte che prevedono la costruzione di una relazione (delta `NETWORK` positivi nei dati).
+- **ENERGY** parte sempre dal **massimo (50)** e funziona come una risorsa, non più come un tratto o un delta autorale per singola scelta (le chiavi `ENERGY` ancora presenti in `career-world-data.js` restano come testo narrativo del messaggio ma non vengono più applicate — vedi `handleChoice()`). Ad ogni interazione:
+  - **-3** di norma (interazione NPC generica);
+  - **-6** (doppio) quando appare la voce interiore critica (`def.isCritic`);
+  - **+5** parlando con un'alleata (`type:'sis'`) o affrontando una sfida tecnica (`type:'tech'`).
+  Se tocca **0** compare un avviso di burnout nel debrief (testo esteso la prima volta, `ST.burnoutWarned`, poi un promemoria breve) — nessun effetto di game over, solo un segnale di sostenibilità coerente con la filosofia del gioco.
+- Ogni delta stat definito su un NPC (`outs[].stat`) viene **moltiplicato ×2.5** prima di essere applicato (`const SCALE=2.5` in `handleChoice()`) — eccetto i valori negativi, che restano com'è, ed **ENERGY**, che segue solo la regola strutturale sopra.
 - **Eccezione P.IVA**: i guadagni positivi di `NETWORK` in quel mondo vengono moltiplicati ×2.5×2 = ×5 invece di ×2.5 (`PIVA_NETWORK_SCALE=2`) — cresce più in fretta perché lì non c'è cambio lavoro/colloqui, la crescita passa solo da relazioni dirette.
+- Un pulsante ℹ️ nella HUD di gioco e nella Card iniziale apre un overlay (`showStatInfo()`) che spiega cosa rappresenta ogni statistica sia nel gioco sia nella vita reale (testi in `UI_TEXTS.stat_info`).
 
 ### 5.2 Livello ESPLORATO vs livello UFFICIALE
 
@@ -241,30 +248,30 @@ Se il livello esplorato supera quello ufficiale (hai già le conversazioni giust
 
 I titoli di carriera per livello sono in `WORLD_CAREER_LEVELS` (`career-world-data.js`) — 3 livelli per mondo, alcuni con bivio al livello 3 (Consulenza: Expert/Engagement Manager, Corporate: Senior Specialist/Engineering Manager).
 
-### 5.3 RAL (stima salariale) — ancorata alla RAL ufficiale precedente
+### 5.3 RAL (stima salariale) — ruolo × livello × area, ancorata alla RAL ufficiale precedente
 
-`computeRAL(worldId, classe, livello)` (`game.js`) calcola una RAL "di mercato" **pura**, senza alcun ancoraggio:
+`computeRAL(worldId, classe, livello, ralModifier)` (`game.js`) calcola una RAL "di mercato" **pura** (poi ancorata, vedi sotto), da tabelle ruolo×livello e area/contesto (`RAL_BASE`/`AREA_MULTIPLIER`, `career-world-data.js`, dati settembre 2026 — fonti e metodo in fondo al file dati):
 
 ```
-RAL_mercato = round( RAL_BASE_BY_LEVEL[livello] × RAL_CLASS_MULTIPLIER[classe] × RAL_WORLD_MULTIPLIER[mondo] / 1000 ) × 1000
+tier = RAL_LEVEL_BY_TIER[livello]              // 1→junior, 2→mid, 3→senior (nessun livello 4 raggiungibile via colloquio)
+[min,max] = RAL_BASE[classe][tier] × AREA_MULTIPLIER[mondo].{min,max}
+offerta = (min + max) / 2 × (1 + clamp(ralModifier, -0.2, 0.2))   // clampata dentro [min×0.9, max×1.15]
+RAL_mercato = round( offerta / 1000 ) × 1000
 ```
 
-Valori attuali (`career-world-data.js`):
+Valori attuali (`RAL_BASE`, € lordi/anno, per ruolo × seniority):
 
-| Livello | RAL base |
-|---|---|
-| 1 (junior) | 26.000 € |
-| 2 (mid) | 36.000 € |
-| 3 (senior) | 52.000 € |
-
-| Classe | Moltiplicatore | | Mondo | Moltiplicatore |
+| Ruolo | Junior | Mid | Senior | Lead |
 |---|---|---|---|---|
-| analyst | 0.95 | | PMI | 0.90 |
-| scientist | 1.05 | | Startup | 1.00 |
-| ml | 1.15 | | Consulenza | 1.08 |
-| ai | 1.20 | | Corporate | 1.15 |
-| dataeng | 1.10 | | P.IVA | 1.00 |
-| explorer | 0.90 | | PA | 0.85 |
+| analyst | 26-32k | 32-40k | 40-50k | 50-65k |
+| scientist | 28-36k | 38-50k | 50-68k | 70-95k |
+| ml | 30-38k | 42-55k | 58-78k | 80-105k |
+| ai | 30-38k | 42-58k | 60-80k | 85-110k |
+| dataeng | 29-37k | 40-53k | 55-74k | 76-100k | *(stimato per estrapolazione da ml, non in survey originale)*
+
+Moltiplicatori d'area (`AREA_MULTIPLIER`): PMI 0.80-0.90, Startup 0.85-1.10, Consulenza 0.90-1.00, Corporate 1.05-1.20, PA 0.55-0.75. **P.IVA non ha un min/max RAL diretto** (è tariffa/giorno, non stipendio) — vedi §5.6.
+
+`ralModifier` è la **leva di negoziazione** accumulata dai dialoghi con un campo `ralEffect:{delta}` (solo nodi a tema esplicitamente negoziale — oggi `cons_salary` e `pmi_auth_salary_data`, delta 0.02-0.07 secondo la scelta), consumata e azzerata al prossimo `grantOfficialLevel()` riuscito. Il debrief mostra un feedback dedicato ("📈 +X% di leva per la prossima trattativa") quando una scelta lo modifica.
 
 Per P.IVA l'etichetta HUD cambia da "RAL stimata" a **"Fatturato annuo stimato"** (`RAL_LABEL_BY_WORLD`).
 
@@ -279,6 +286,8 @@ altrimenti:
     RAL_new = RAL_mercato > capped ? capped : RAL_mercato   // può anche scendere
 ```
 `RAL_precedente` = la RAL ufficiale dello **stesso mondo** per una promozione interna, o del **mondo lasciato** per un cambio di azienda. Non esiste più alcun "premio % cumulativo" illimitato: `INTERNAL_PROMOTION_RAL_CAP=0.10`, `EXTERNAL_JOB_CHANGE_RAL_CAP=0.20` (`career-world-data.js`).
+
+**Readiness (solo informativa)**: `computeReadiness(gs) = 0.5×SKILL + 0.25×VOICE + 0.25×CLARITY` (scala 0-50) mappata a un tier junior/mid/senior/lead (soglie 18/30/40, `READINESS_THRESHOLDS`). Il picker "Cambia lavoro" la usa solo per **pre-selezionare** il livello suggerito nel dropdown, mostrando un suggerimento a schermo — non blocca né sostituisce il colloquio, che resta l'unico vero gate (vedi §5.4).
 
 ### 5.4 Colloquio (minigioco "Cambia lavoro")
 
@@ -305,11 +314,18 @@ Bottone **"💼 Cambia lavoro"** sempre visibile nella HUD di gioco (in qualunqu
 2. **Promozione interna** (mondo scelto nel picker = mondo in cui si è già ufficialmente): concede il livello (con relativo contenuto NPC, stavolta sì). RAL cappata a **+10%** rispetto alla RAL ufficiale attuale in quel mondo (§5.3). INSIDER **invariato**, nessun bonus NETWORK — non hai lasciato nessuna azienda.
 3. **Cambio di azienda vero** (mondo scelto diverso da quello in cui si è ufficialmente ora): concede il livello. RAL cappata a **+20%** rispetto alla RAL ufficiale del mondo lasciato. INSIDER ridotto al 30% (§5.1). **Bonus NETWORK** una tantum = `min(NETWORK_JOB_CHANGE_BONUS_CAP, round(dimensione_azienda_lasciata × livello_ufficiale_lì))` — cap **15** (era 20, mai raggiungibile: il prodotto massimo reale è 5×3=15). Dimensioni aziende (`WORLD_COMPANY_SIZE`): PMI 1, Startup 2, Consulenza 4, Corporate 5, PA 4, P.IVA 0. **Spostamento**: prima un breve beat narrativo pescato a caso da `JOB_CHANGE_TRANSITIONS` (3 varianti, es. "Dai le dimissioni. Due settimane dopo..."), poi la giocatrice viene spostata davvero nel nuovo mondo (`enterWorld()`) — non più un teletrasporto istantaneo.
 
-### 5.6 P.IVA — eccezioni
+### 5.6 P.IVA — eccezioni e il fatturato che si costruisce, non si riceve
 
 - Nessun colloquio/cambio lavoro (esclusa da menu e prompt) — ma riceve comunque il livello 1 ufficiale gratuito al primo ingresso, come ogni altro mondo (§5.5 caso 1).
 - NETWORK cresce il doppio rispetto agli altri mondi per le scelte NPC positive (§5.1).
 - `WORLD_COMPANY_SIZE.piva = 0` (non ha senso "quanto è grande" un'attività da sola).
+- **RAL = fatturato costruito, non assegnato**: a differenza degli altri mondi, `computeRAL('piva', ...)` ritorna sempre 0 — `ST.world.officialRAL` per P.IVA è il fatturato reale (`ST.world.pivaState.fatturato`), aggiornato dal vivo dopo ogni contratto, non una stima di mercato. Parte da 0 alla primissima volta che si entra nel mondo, poi persiste tra le sessioni come tutto il resto (`ST.worldsProgress.piva.pivaState`).
+- **Nodi con `revenueEffect`** (`career-world-data.js`, applicato in `handleChoice()` solo quando `ST.world.id==='piva'`): `piva_contratto`, `piva_tech2`, `piva_level2_pricing`, `piva_level2_scope`. Due tipi, anche combinabili su una stessa scelta (array):
+  - `{type:'contract', days, quality}` → aggiunge un contratto: `valore = tariffa_del_contratto × days × quality × reputationMultiplier` (`contractValue()`). La tariffa/giorno **non dipende più dal livello**, ma da quanti contratti ha già chiuso in questo mondo (`feeForContract()`, `PIVA_FEE_STEPS=[250,500,750,1000]`): 250€/gg il 1° contratto, 500 il 2°, 750 il 3°, dal 4° in poi resta a 1000€/gg (tetto) — il track record conta più del titolo. `PIVA_DAYRATE`/`pivaAnnualEquivalent()` restano solo come range di confronto informativo, non entrano più nel calcolo.
+  - `{type:'reputation', delta}` → alza (o abbassa) `reputationMultiplier`, che si applica composto ai contratti successivi nello stesso mondo — non vale nulla subito, ma fa valere di più tutto ciò che viene dopo.
+  - `piva_level2_scope` (cliente ricorrente) marca anche `concentration:0.6`: il rischio di dipendere da un solo cliente, registrato in `pivaState.concentrationRisk`.
+- Il debrief mostra sempre la scomposizione del guadagno ("💰 +X€ di fatturato (giorni × tariffa) — totale Y€") o del cambio di reputazione ("📈/📉 X% sul tuo tariffario"), mai solo il numero finale — per rendere leggibile il nesso scelta→guadagno.
+- `finalizePivaEquivalent(pivaState)` converte il fatturato in una RAL-equivalente di riferimento (sconto 0.65 + penalità di concentrazione) — pronta in `career-world-data.js` ma oggi **solo utility**, non ancora agganciata a un punto preciso della UI (nessun flusso esistente per "dichiarare" il fatturato P.IVA in una trattativa da dipendente altrove).
 
 ### 5.7 Nota didattica sulla domanda illegale (PMI)
 
