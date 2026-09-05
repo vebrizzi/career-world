@@ -185,7 +185,7 @@ Il punteggio di ogni risposta testuale è in `export const SMAP={...}` (righe 29
 
 File: `WORLD_INTROS` righe 1719-1738 (PMI/Startup/Consulenza), `WORLD_INTROS_NEW` righe 2343-2356 (Corporate/P.IVA), `WORLD_INTROS.pa` riga ~3693 (dentro `patchWorldsV12()`).
 
-### Nodi sulla mappa (`MAP_NODES`, `game.js` riga 1662)
+### Nodi sulla mappa (`MAP_NODES`, `game.js`)
 
 | Mondo | Descrizione mostrata sulla mappa |
 |---|---|
@@ -196,7 +196,7 @@ File: `WORLD_INTROS` righe 1719-1738 (PMI/Startup/Consulenza), `WORLD_INTROS_NEW
 | Corporate | Risorse, politica, rete informale |
 | P.IVA | Autonomia totale, costruisci il tuo |
 
-Le linee di "affinità" tra mondi (`affinities` in `MAP_NODES`) sono solo visive, non bloccano l'accesso: tutti i 6 mondi sono sempre selezionabili.
+La mappa è l'illustrazione di una città (`public/map/galletcity.png`, 512×512), non più un layout SVG a nodi/linee: ogni mondo è un hotspot cliccabile posizionato (in %, `MAP_CITY_POS`) sopra un edificio specifico della scena — assegnazione fatta a occhio, puramente estetica/narrativa (torre istituzionale → PA, capannone con macchinari → PMI, blocco denso di grattacieli → Consulenza, edificio con logo/prato circolare → Corporate, palazzo scuro con grate → Startup, piccolo edificio isolato → P.IVA). Le linee di "affinità" tra mondi (`affinities` in `MAP_NODES`, ancora usate per il testo descrittivo) non hanno più una resa visiva (niente più linee tratteggiate) — non bloccavano comunque l'accesso: tutti i 6 mondi restano sempre cliccabili.
 
 ---
 
@@ -289,7 +289,7 @@ altrimenti:
 
 **Readiness (solo informativa)**: `computeReadiness(gs) = 0.5×SKILL + 0.25×VOICE + 0.25×CLARITY` (scala 0-50) mappata a un tier junior/mid/senior/lead (soglie 18/30/40, `READINESS_THRESHOLDS`). Il picker "Cambia lavoro" la usa solo per **pre-selezionare** il livello suggerito nel dropdown, mostrando un suggerimento a schermo — non blocca né sostituisce il colloquio, che resta l'unico vero gate (vedi §5.4).
 
-### 5.4 Colloquio (minigioco "Cambia lavoro")
+### 5.4 Colloquio (anche d'ingresso, oltre che per "Cambia lavoro")
 
 `showInterview()`, `game.js`. Domande da `INTERVIEW_QUESTIONS` — **4 domande generiche per livello** (stesse per tutti i mondi, risposte da 0 a 2 punti) **+ 1 domanda specifica del mondo/livello** da `INTERVIEW_WORLD_QUESTIONS` → **5 domande totali**.
 
@@ -301,8 +301,9 @@ altrimenti:
   rischio = INTERVIEW_LUCK_REJECT_MAX - progresso_oltre_soglia × (INTERVIEW_LUCK_REJECT_MAX - INTERVIEW_LUCK_REJECT_MIN)
   ```
   `INTERVIEW_LUCK_REJECT_MAX=0.35` (appena sopra soglia), `INTERVIEW_LUCK_REJECT_MIN=0.05` (punteggio pieno) — quindi 70%→35% di rischio, 100%→5%. Messaggio pescato a caso tra 4 varianti in `INTERVIEW_LUCK_MESSAGES`: "abbiamo scelto un'altra persona", "sei stata ghostata", "posizione messa in pausa", "hanno promosso internamente qualcun altro". In questo caso il livello **non** viene concesso.
-- Livelli selezionabili: **1, 2 o 3** (il picker "Cambia lavoro" li offre tutti, livello 2 preselezionato di default) — il livello 1 ha senso richiederlo via colloquio solo per un mondo in cui non si è ancora ufficialmente al lavoro (altrimenti è già gratuito, vedi §5.5.
-- **P.IVA non ha colloqui**: esclusa sia dal menu mondi del picker sia da qualunque prompt — cresce solo per relazioni dirette (NETWORK ×2, vedi §5.1).
+- Livelli selezionabili: **1, 2 o 3** (il picker "Cambia lavoro" li offre tutti, con un suggerimento di livello pre-selezionato in base alla readiness — §5.3).
+- **Colloquio d'ingresso** (`enterWorld()`, non solo "Cambia lavoro"): cliccare sulla mappa un mondo mai visitato prima (tranne P.IVA) apre subito il colloquio per il livello 1, invece del vecchio grant automatico e silenzioso. Se superato, il risultato comunica anche la RAL di partenza ("💶 RAL: 19.000 €"); se fallito, si torna alla mappa e il mondo resta cliccabile — si può ritentare subito, senza limiti e senza alcun blocco permanente (coerente con "Nessun game over").
+- **P.IVA non ha colloqui**, né d'ingresso né per "Cambia lavoro": esclusa sia dal menu mondi del picker sia da qualunque prompt — cresce solo per relazioni dirette (NETWORK ×2, §5.1) e fatturato costruito (§5.6).
 
 ### 5.5 Cambia lavoro — tre casi, spostamento automatico, transizione narrativa
 
@@ -310,13 +311,13 @@ Bottone **"💼 Cambia lavoro"** sempre visibile nella HUD di gioco (in qualunqu
 
 `grantOfficialLevel(worldId, livello, track, opts)` gestisce **tre casi distinti**:
 
-1. **Primo ingresso gratuito** (`opts.free=true`, chiamato da `enterWorld()` la primissima volta che si entra in un mondo mai visitato prima): livello 1 ufficiale automatico — come essere assunte, nessun colloquio richiesto solo per iniziare. RAL = `RAL_mercato` pura (nessun ancoraggio, §5.3). **Non** marca alcun NPC come "visitato" — il contenuto va comunque esplorato a piedi, solo titolo/RAL sono immediati. Nessun effetto su INSIDER/NETWORK.
+1. **Ingresso gratuito senza colloquio** (`opts.free=true`) — oggi riservato al **solo P.IVA** (che non ha colloqui, §5.6): livello 1 ufficiale automatico al primo ingresso in assoluto. Per tutti gli altri mondi il livello 1 passa dal colloquio d'ingresso (§5.4), non da questo path. RAL = `RAL_mercato` pura (nessun ancoraggio, §5.3) quando si applica. Nessun effetto su INSIDER/NETWORK.
 2. **Promozione interna** (mondo scelto nel picker = mondo in cui si è già ufficialmente): concede il livello (con relativo contenuto NPC, stavolta sì). RAL cappata a **+10%** rispetto alla RAL ufficiale attuale in quel mondo (§5.3). INSIDER **invariato**, nessun bonus NETWORK — non hai lasciato nessuna azienda.
-3. **Cambio di azienda vero** (mondo scelto diverso da quello in cui si è ufficialmente ora): concede il livello. RAL cappata a **+20%** rispetto alla RAL ufficiale del mondo lasciato. INSIDER ridotto al 30% (§5.1). **Bonus NETWORK** una tantum = `min(NETWORK_JOB_CHANGE_BONUS_CAP, round(dimensione_azienda_lasciata × livello_ufficiale_lì))` — cap **15** (era 20, mai raggiungibile: il prodotto massimo reale è 5×3=15). Dimensioni aziende (`WORLD_COMPANY_SIZE`): PMI 1, Startup 2, Consulenza 4, Corporate 5, PA 4, P.IVA 0. **Spostamento**: prima un breve beat narrativo pescato a caso da `JOB_CHANGE_TRANSITIONS` (3 varianti, es. "Dai le dimissioni. Due settimane dopo..."), poi la giocatrice viene spostata davvero nel nuovo mondo (`enterWorld()`) — non più un teletrasporto istantaneo.
+3. **Cambio di azienda vero** (mondo scelto diverso da quello in cui si è ufficialmente ora): concede il livello. RAL cappata a **+20%** rispetto alla RAL ufficiale del mondo lasciato. INSIDER ridotto al 30% (§5.1). **Bonus NETWORK** una tantum = `min(NETWORK_JOB_CHANGE_BONUS_CAP, round(dimensione_azienda_lasciata × livello_ufficiale_lì))` — cap **15** (era 20, mai raggiungibile: il prodotto massimo reale è 5×3=15). Dimensioni aziende (`WORLD_COMPANY_SIZE`): PMI 1, Startup 2, Consulenza 4, Corporate 5, PA 4, P.IVA 0. **Spostamento**: prima un breve beat narrativo pescato a caso da `JOB_CHANGE_TRANSITIONS` (3 varianti, es. "Dai le dimissioni. Due settimane dopo..."), poi la giocatrice viene spostata davvero nel nuovo mondo (`enterWorld()`) — non più un teletrasporto istantaneo. Lo stesso path (`grantOfficialLevel` chiamato subito dopo il colloquio, non al click su "Continua") vale anche per il primissimo ingresso in un mondo mai visitato quando non si ha ancora nessun mondo ufficiale (`ST.world.id` nullo): nessun beat narrativo in quel caso, si entra direttamente.
 
 ### 5.6 P.IVA — eccezioni e il fatturato che si costruisce, non si riceve
 
-- Nessun colloquio/cambio lavoro (esclusa da menu e prompt) — ma riceve comunque il livello 1 ufficiale gratuito al primo ingresso, come ogni altro mondo (§5.5 caso 1).
+- Nessun colloquio, né d'ingresso né per cambio lavoro (esclusa da menu e prompt) — riceve il livello 1 ufficiale gratuito e silenzioso al primo ingresso (§5.5 caso 1), l'unico mondo per cui questo path si applica ancora.
 - NETWORK cresce il doppio rispetto agli altri mondi per le scelte NPC positive (§5.1).
 - `WORLD_COMPANY_SIZE.piva = 0` (non ha senso "quanto è grande" un'attività da sola).
 - **RAL = fatturato costruito, non assegnato**: a differenza degli altri mondi, `computeRAL('piva', ...)` ritorna sempre 0 — `ST.world.officialRAL` per P.IVA è il fatturato reale (`ST.world.pivaState.fatturato`), aggiornato dal vivo dopo ogni contratto, non una stima di mercato. Parte da 0 alla primissima volta che si entra nel mondo, poi persiste tra le sessioni come tutto il resto (`ST.worldsProgress.piva.pivaState`).
