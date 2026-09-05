@@ -3076,7 +3076,7 @@ export const PA_ADDITIONS = [
 export const PA_LEVEL2_ADDITIONS = [
   {id:'pa_level2_authorship',sprite:'col',gender:'m',label:'Disputa di autorship',type:'npc',level:2,required:false,gridX:4,gridY:2,
     dlg:{spk:'👨‍🔬 Collega — Ordine degli autori',color:'#f48fb1',
-      txt:'Il paper che avete scritto insieme è pronto per la submission. Il tuo collega propone di mettersi come primo autore, anche se hai fatto la maggior parte del lavoro di analisi. "È solo una formalità", dice. Cosa fai?',
+      txt:'Il paper è pronto per la submission. Ho pensato: mettiamo me come primo autore, così facciamo prima — è solo una formalità, tanto l\'abbiamo scritto insieme.',
       chs:[
         {t:'Chiedo di discutere l\'ordine degli autori sulla base dei contributi effettivi (es. criteri CRediT), con calma ma con fermezza.',out:'criteria'},
         {t:'Lascio correre — litigare per l\'ordine degli autori sembra meschino nel mondo accademico.',out:'concede'},
@@ -3136,7 +3136,7 @@ export const PA_LEVEL3_ADDITIONS = [
       data:'Nature Careers 2021: i nuovi PI che hanno accesso a mentoring strutturato nei primi due anni hanno un tasso di successo nei bandi successivi superiore del 35%.'}},
   {id:'pa_level3_public',sprite:'sis',gender:'f',label:'Intervista pubblica',type:'sis',level:3,required:false,gridX:11,gridY:8,
     dlg:{spk:'❤️ Anna — collega più esperta',color:'#e53935',
-      txt:'Un giornalista ti contatta per un\'intervista sulla tua ricerca, che tratta un tema controverso. Anna, che ha già vissuto momenti simili, ti chiede come pensi di gestirla.',
+      txt:'Ho saputo che un giornalista ti ha contattata per la tua ricerca — un tema controverso, eh? È successo anche a me. Come pensi di gestire l\'intervista?',
       chs:[
         {t:'Preparo in anticipo 2-3 messaggi chiave e mi alleno a tornarci indipendentemente dalle domande.',out:'prepare'},
         {t:'Rispondo spontaneamente — voglio che venga fuori un tono autentico, non preparato.',out:'spontaneous'},
@@ -3367,7 +3367,7 @@ export const PMI_LEVEL2_ADDITIONS = [
 export const PMI_LEVEL3_ADDITIONS = [
   {id:'pmi_level3_mentor',sprite:'mgr',gender:'m',label:'Junior in difficoltà',type:'npc',level:3,required:false,gridX:6,gridY:2,
     dlg:{spk:'👔 Direzione — Il junior del team non sta reggendo',color:'#ffb74d',
-      txt:'Il junior che hai contribuito ad assumere sta faticando: consegne in ritardo, poca sicurezza in riunione. Il tuo manager ti chiede: "Tu che ne pensi, lo teniamo?" Cosa rispondi?',
+      txt:'Il junior che hai contribuito ad assumere sta faticando — consegne in ritardo, poca sicurezza in riunione. Tu che ne pensi, lo teniamo?',
       chs:[
         {t:'Chiedo tempo per capire se il problema è di competenze o di contesto — non decido a caldo.',out:'investigate'},
         {t:'Dico che se non regge il ritmo forse questo lavoro non fa per lui.',out:'harsh'},
@@ -3506,7 +3506,7 @@ export const STARTUP_LEVEL2_ADDITIONS = [
       data:'Stripe Developer Coefficient 2022: gli sviluppatori dedicano in media il 33% del tempo a debito tecnico pregresso nelle scale-up in rapida crescita.'}},
   {id:'startup_level2_equity',sprite:'mgr',gender:'f',label:'Rinnovo del pacchetto',type:'npc',level:2,required:false,gridX:12,gridY:4,
     dlg:{spk:'💼 Founder — Rinegoziazione equity',color:'#ce93d8',
-      txt:'Con l\'ultimo round la tua equity si è diluita parecchio. Il founder ti dice: "Sei fondamentale per noi, ne parliamo quando ci pensiamo". Come rispondi?',
+      txt:'So che con l\'ultimo round la tua equity si è diluita parecchio. Sei fondamentale per noi — ne parliamo quando ci pensiamo, ok?',
       chs:[
         {t:'Chiedo una data precisa per la conversazione, non un generico "ci pensiamo".',out:'date'},
         {t:'Aspetto — non voglio sembrare che pensi solo ai soldi in un momento delicato per l\'azienda.',out:'wait'},
@@ -3530,7 +3530,7 @@ export const STARTUP_LEVEL2_ADDITIONS = [
 export const STARTUP_LEVEL3_ADDITIONS = [
   {id:'startup_level3_hiring',sprite:'mgr',gender:'f',label:'Costruire il team',type:'npc',level:3,required:false,gridX:4,gridY:3,
     dlg:{spk:'💼 Founder — Il primo hiring tecnico è tuo',color:'#ce93d8',
-      txt:'Sei tu che deciderai chi entra nel team tecnico. Il candidato migliore sulla carta ha uno stile molto aggressivo nei colloqui, raccontano i colleghi che lo hanno già incontrato. Cosa fai?',
+      txt:'Il candidato migliore sulla carta ha uno stile molto aggressivo nei colloqui, mi hanno riferito i colleghi che l\'hanno già incontrato. La decisione finale su chi entra nel team tecnico è tua: che ne pensi?',
       chs:[
         {t:'Lo scarto — lo stile con cui tratterà il team pesa quanto le competenze.',out:'reject'},
         {t:'Lo valuto comunque, le competenze tecniche vengono prima del resto in questa fase.',out:'skills_first'},
@@ -3651,7 +3651,7 @@ export const CONSULENZA_ADDITIONS = [
 export const CONSULENZA_LEVEL2_ADDITIONS = [
   {id:'cons_level2_pushback',sprite:'col',gender:'m',label:'Cliente scettico',type:'npc',level:2,required:false,gridX:4,gridY:2,
     dlg:{spk:'🧑‍💼 Client Lead — Resistenza al cambiamento',color:'#4fc3f7',
-      txt:'Il cliente rifiuta la tua raccomandazione: "Abbiamo sempre fatto così, non vediamo perché cambiare ora." Sei tu a guidare la call. Come rispondi?',
+      txt:'Abbiamo sempre fatto così, non vediamo perché cambiare ora.',
       chs:[
         {t:'Porto tre casi comparabili dove il "sempre fatto così" ha portato a perdite quantificabili.',out:'cases'},
         {t:'Chiedo di capire meglio cosa li preoccupa davvero prima di insistere sulla raccomandazione.',out:'listen'},
@@ -3669,7 +3669,7 @@ export const CONSULENZA_LEVEL2_ADDITIONS = [
       data:'MIT Sloan Management Review 2021: i progetti di cambiamento organizzativo che includono una fase esplicita di ascolto della resistenza hanno il 34% in più di probabilità di successo.'}},
   {id:'cons_level2_staffing',sprite:'mgr',gender:'m',label:'Assegnazione progetti',type:'npc',level:2,required:false,gridX:11,gridY:4,
     dlg:{spk:'👔 Partner — Prossimo staffing',color:'#4fc3f7',
-      txt:'Il prossimo progetto di alto profilo (visibilità, viaggio, cliente strategico) sta per essere assegnato. Non è stato ancora proposto a te, nonostante i risultati. Cosa fai?',
+      txt:'Stiamo per assegnare il prossimo progetto di alto profilo — visibilità, viaggio, cliente strategico. Con te non ne abbiamo ancora parlato, nonostante i tuoi risultati.',
       chs:[
         {t:'Mi propongo esplicitamente al partner, con i risultati dei progetti recenti come argomento.',out:'propose'},
         {t:'Aspetto che se ne accorgano — i risultati dovrebbero parlare da soli.',out:'wait'},
@@ -3733,7 +3733,7 @@ export const CONSULENZA_LEVEL3_EXPERT_ADDITIONS = [
 export const CONSULENZA_LEVEL3_MANAGER_ADDITIONS = [
   {id:'cons_level3_manager',sprite:'sis',gender:'f',label:'Team in difficoltà',type:'sis',level:3,track:'manager',required:false,gridX:5,gridY:3,
     dlg:{spk:'❤️ Sara — una del tuo team, in confidenza',color:'#e53935',
-      txt:'Come Engagement Manager gestisci un team di 5 persone su un cliente difficile. Una di loro ti confida in privato che un\'altra persona del team si sta prendendo il merito del suo lavoro davanti al cliente. Cosa fai?',
+      txt:'Posso dirti una cosa in confidenza? Nelle ultime call con il cliente, un\'altra persona del team si sta prendendo il merito del mio lavoro. Non so bene come affrontarla.',
       chs:[
         {t:'Ne parlo direttamente con la persona coinvolta, in privato, con esempi concreti.',out:'direct'},
         {t:'Aggiusto la struttura delle prossime call cliente perché ogni contributo sia attribuito esplicitamente.',out:'structural'},
@@ -3836,7 +3836,7 @@ export const CORPORATE_ADDITIONS = [
 export const CORPORATE_LEVEL2_ADDITIONS = [
   {id:'corp_level2_visibility',sprite:'col',gender:'m',label:'Riunione cross-team',type:'npc',level:2,required:false,gridX:4,gridY:2,
     dlg:{spk:'🧑‍💻 Collega di un altro team',color:'#4fc3f7',
-      txt:'In una riunione cross-team, presenti un risultato che hai ottenuto tu, ma un collega di un altro team lo riassume dicendo "come abbiamo fatto noi". Nessuno corregge. Cosa fai?',
+      txt:'Sì allora, come abbiamo fatto noi, abbiamo ottimizzato la pipeline e ridotto i tempi del 40%.',
       chs:[
         {t:'Intervengo subito, con tono neutro: "Per chiarezza, il lavoro è stato fatto dal mio team."',out:'correct'},
         {t:'Lascio correre in riunione, ma dopo scrivo una nota di follow-up che chiarisce l\'attribuzione.',out:'followup'},
@@ -4023,7 +4023,7 @@ export const PIVA_ADDITIONS = [
 export const PIVA_LEVEL2_ADDITIONS = [
   {id:'piva_level2_pricing',sprite:'mgr',gender:'f',label:'Trattativa tariffe',type:'npc',level:2,required:false,gridX:4,gridY:2,
     dlg:{spk:'💼 Potenziale cliente — Budget limitato',color:'#6af7c8',
-      txt:'Un cliente interessante ti dice: "Il tuo preventivo è più alto di quello di altri freelance che abbiamo sentito. Puoi fare uno sconto?" Come rispondi?',
+      txt:'Il tuo preventivo è più alto di quello di altri freelance che abbiamo sentito. Puoi farci uno sconto?',
       chs:[
         {t:'Spiego cosa include il prezzo (esperienza, garanzie, tempi) senza scendere sotto la mia tariffa minima.',out:'hold'},
         {t:'Faccio uno sconto del 20% — è un cliente importante e non voglio perderlo.',out:'discount'},
@@ -4041,7 +4041,7 @@ export const PIVA_LEVEL2_ADDITIONS = [
       data:'Freelancers Union 2022: le freelance donne applicano in media tariffe orarie del 16% inferiori a quelle dei colleghi uomini a parità di esperienza dichiarata.'}},
   {id:'piva_level2_scope',sprite:'col',gender:'f',label:'Cliente ricorrente',type:'npc',level:2,required:false,gridX:11,gridY:4,
     dlg:{spk:'📧 Cliente storico — Richiesta extra',color:'#6af7c8',
-      txt:'Un cliente con cui lavori da mesi ti chiede "una piccola aggiunta" fuori contratto, la terza questo mese. Ogni volta sembra troppo piccola per fatturarla a parte. Cosa fai?',
+      txt:'Un\'altra piccola aggiunta fuori contratto — lo so, è la terza questo mese! Ma anche questa dovrebbe volerci un attimo, giusto?',
       chs:[
         {t:'Tengo un log di tutte le richieste extra e alla fine del mese propongo di fatturarle insieme.',out:'log'},
         {t:'La faccio gratis come le altre — non voglio sembrare pignola per richieste piccole.',out:'free'},

@@ -669,7 +669,17 @@ function gPreload(){
   AVATAR_KEYS.forEach(key=>{if(!this.textures.exists(key))this.load.image(key,`/npc-avatars/${key}.png`);});
   if(!this.textures.exists(ALLY_AVATAR_KEY))this.load.image(ALLY_AVATAR_KEY,`/npc-avatars/${ALLY_AVATAR_KEY}.png`);
   if(!this.textures.exists('player_avatar'))this.load.image('player_avatar','/player/player.png');
-  if(!this.textures.exists('tech'))this.load.image('tech','/props/pc.png');
+  // Scrivania per le sfide tecniche: quella moderna nei mondi più
+  // tech-forward (P.IVA, Startup, Consulenza, Corporate), quella vecchia in
+  // PA e PMI — coerente con quanto sono "aggiornati" quei contesti nel resto
+  // dei testi. Chiave texture unica ('tech'), file diverso a seconda del
+  // mondo — sicuro perché ogni ingresso in un mondo ricrea un Phaser.Game
+  // (e quindi un texture manager) da zero, vedi launchPhaser().
+  if(!this.textures.exists('tech')){
+    const MODERN_DESK_WORLDS=new Set(['piva','startup','consulenza','corporate']);
+    const techImg=MODERN_DESK_WORLDS.has(ST.world.id)?'/props/pc_modern.png':'/props/pc.png';
+    this.load.image('tech',techImg);
+  }
   // Arredi illustrati (PNG) — sostituiscono le silhouette procedurali per i
   // pezzi che hanno un equivalente nel set; furn_factory e furn_globe
   // restano disegnati a mano, non coperti dal set (macchinario industriale
