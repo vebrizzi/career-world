@@ -1140,7 +1140,20 @@ function gUpdate(){
   }catch(e){}
 }
 
+// NPC con roleDlg (i 6 NPC "sfida tecnica", vedi career-world-data.js)
+// mostrano uno scenario diverso a seconda di ST.char.cls invece del dlg/outs
+// unico di default — vedi career-world-colloqui-ruoli-spec.md §6. Nessuna
+// variante per la classe corrente → fallback silenzioso su dlg/outs
+// originali (copre anche l'eventuale 'explorer' legacy).
+function resolveNpcDef(def){
+  if(!def.roleDlg)return def;
+  const variant=def.roleDlg[ST.char?.cls];
+  if(!variant)return def;
+  return {...def,dlg:variant.dlg,outs:variant.outs};
+}
+
 function triggerNPC(def,npc){
+  def=resolveNpcDef(def);
   evActive=true;curEv=def;player.setVelocity(0,0);
   const bub=npc?.getData('bub');if(bub)bub.setVisible(false);
   showDialog(def);
@@ -1628,11 +1641,22 @@ function showRalGate({worldId,targetLevel,track,offer,title,wLabel,onResolved,on
 function showInterview(worldId,targetLevel,track){
   hideTc();
   const base=INTERVIEW_QUESTIONS[targetLevel]||INTERVIEW_QUESTIONS[1];
-  const worldQ=INTERVIEW_WORLD_QUESTIONS[worldId]?.[targetLevel];
-  const pool=worldQ?[...base,worldQ]:base;
-  // Per PMI la domanda specifica è sempre quella illegale su stato
-  // civile/figli/leadership — vedi PMI_ILLEGAL_QUESTION_NOTICE.
-  const isPmiIllegalQuestion=worldId==='pmi'&&!!worldQ;
+  // Ogni mondo/livello ha 2 domande di mondo (vedi INTERVIEW_WORLD_QUESTIONS
+  // in career-world-data.js). Big Corporate e Consulenza differenziano lo
+  // slot2 per ruolo (byRole): resolveWorldQuestion() lo appiattisce in una
+  // domanda normale {q,a} prima che entri nel pool.
+  function resolveWorldQuestion(raw){
+    if(!raw.byRole)return raw;
+    // Fallback 'scientist' per classi senza variante propria (incluso
+    // l'eventuale 'explorer' legacy, non più assegnato a nuovi account).
+    const variant=raw.byRole[ST.char?.cls]||raw.byRole.scientist;
+    return {...raw,q:variant.q,a:variant.a};
+  }
+  const worldQArr=(INTERVIEW_WORLD_QUESTIONS[worldId]?.[targetLevel]||[]).map(resolveWorldQuestion);
+  const pool=[...base,...worldQArr];
+  // Domanda-lezione non valutata (oggi solo PMI, stato civile/figli/
+  // leadership) — vedi PMI_ILLEGAL_QUESTION_NOTICE.
+  const hasIllegalQuestion=worldQArr.some(q=>q.legal===false);
   const levels=WORLD_CAREER_LEVELS[worldId];
   const entry=levels?.[targetLevel-1];
   const title=typeof entry==='string'?entry:(entry&&track?entry[track]:'il ruolo');
@@ -1713,7 +1737,7 @@ function showInterview(worldId,targetLevel,track){
       : luckRejected
         ? `Punteggio: ${score}/${maxScore} — sufficiente per il ruolo. ${luckMsg} Non è dipeso dalle tue risposte. Puoi riprovare quando vuoi.`
         : `Punteggio: ${score}/${maxScore}. Non questa volta — ma puoi riprovare quando vuoi.`;
-    if(isPmiIllegalQuestion)body+=`<br><br><span style="opacity:.85;font-size:.88em">${PMI_ILLEGAL_QUESTION_NOTICE}</span>`;
+    if(hasIllegalQuestion)body+=`<br><br><span style="opacity:.85;font-size:.88em">${PMI_ILLEGAL_QUESTION_NOTICE}</span>`;
     overlay.innerHTML=`
       <div class="dl-box" style="text-align:center">
         <div class="dl-spk" style="color:${color}">${headline}</div>

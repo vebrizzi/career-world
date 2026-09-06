@@ -637,128 +637,480 @@ export const INTERVIEW_QUESTIONS={
 export const INTERVIEW_PASS_RATIO=0.7; // quota del punteggio massimo per superare il colloquio
 
 // ══════════════════════════════════════════════════════════════
-// Domanda extra per mondo+livello, aggiunta in coda al pool generico
-// (vedi showInterview() in src/game/game.js) — dà un po' di contesto
-// specifico oltre alle domande comportamentali generiche.
-// Per PMI sono le classiche domande personali fuori legge in colloquio
-// (stato civile, figli): tutte le risposte valgono 0 punti — non è una
-// domanda che valuta la candidata, è la realtà del mercato che si mostra.
+// Domande extra per mondo+livello, aggiunte in coda al pool generico
+// (vedi showInterview() in src/game/game.js) — 2 per mondo/livello: slot1
+// è la domanda originale (per PMI: la domanda illegale, `legal:false`,
+// tutte le risposte valgono 0 — non valuta la candidata, mostra la realtà
+// del mercato), slot2 è nuova e mirata al profilo di valutazione reale di
+// quel tipo di organizzazione (vedi career-world-colloqui-ruoli-spec.md).
+// `dimension` è un metadato descrittivo, non pesa lo scoring. `byRole`
+// (solo Big Corporate e Consulenza, slot2) sostituisce q/a con 5 varianti
+// per ST.char.cls — risolto da resolveWorldQuestion() in showInterview().
 // ══════════════════════════════════════════════════════════════
-export const INTERVIEW_WORLD_QUESTIONS={
-  pmi:{
-    1:{q:'Sei sposata, o hai intenzione di sposarti nei prossimi anni?',
-      a:[
-        {t:'Faccio notare con calma che è una domanda che la legge non permette in un colloquio, e chiedo di tornare al ruolo.',score:0},
-        {t:'Rispondo comunque, per non sembrare scortese.',score:0},
-        {t:'Mento dicendo che non ho intenzione di sposarmi, per non rischiare di essere scartata.',score:0},
-        {t:'Rispondo con una battuta per sdrammatizzare e cambiare argomento.',score:0},
-      ]},
-    2:{q:'Con un ruolo più impegnativo, come pensi di conciliarlo con la famiglia?',
-      a:[
-        {t:'Faccio notare che è una domanda che non farebbero a un candidato uomo, e riporto il discorso sulle mie competenze.',score:0},
-        {t:'Spiego in dettaglio come organizzerei la mia vita privata per rassicurarli.',score:0},
-        {t:'Per ora non ho figli — spero basti a chiudere il discorso.',score:0},
-        {t:'Chiedo se possiamo mettere questa parte a verbale, così risulta chi l\'ha chiesto.',score:0},
-      ]},
-    3:{q:'Per un ruolo così senior, non pensi che sia difficile per una donna gestire un team di soli uomini?',
-      a:[
-        {t:'Rispondo che la domanda parte da un pregiudizio, e chiedo quali competenze di leadership cercano davvero.',score:0},
-        {t:'Rassicuro dicendo che "so gestirmi bene con gli uomini".',score:0},
-        {t:'Evito di rispondere e cambio argomento da sola.',score:0},
-        {t:'Rispondo con una domanda a mia volta: "Lo chiedereste anche a un candidato uomo?"',score:0},
-      ]},
+export const INTERVIEW_WORLD_QUESTIONS = {
+
+  // ────────────────────────────────────────────────────────────
+  // PMI — slot1 domanda illegale (invariata), slot2 NUOVA:
+  // comprensione del ruolo ibrido + intenzione di restare
+  // ────────────────────────────────────────────────────────────
+  pmi: {
+    1: [
+      { q:'Sei sposata, o hai intenzione di sposarti nei prossimi anni?', legal:false, dimension:'bias_awareness',
+        a:[
+          {t:'Faccio notare con calma che è una domanda che la legge non permette in un colloquio, e chiedo di tornare al ruolo.',score:0},
+          {t:'Rispondo comunque, per non sembrare scortese.',score:0},
+          {t:'Mento dicendo che non ho intenzione di sposarmi, per non rischiare di essere scartata.',score:0},
+          {t:'Rispondo con una battuta per sdrammatizzare e cambiare argomento.',score:0},
+        ]},
+      { q:'In questa azienda il tuo ruolo probabilmente coprirà data analysis, un po\' di IT, e supporto alla produzione — tutto insieme, senza un team dati vero. Come la vedi?', dimension:'role_understanding',
+        a:[
+          {t:'Lo vedo come un\'opportunità di imparare su problemi reali con visibilità diretta, sapendo che significa anche costruirmi da sola gli strumenti che altrove troverei già pronti.',score:2},
+          {t:'Va bene per ora, ma mi aspetto che il ruolo si definisca meglio abbastanza in fretta.',score:1},
+          {t:'Preferirei che fosse già definito con più chiarezza prima di accettare.',score:1},
+          {t:'Va bene, tanto è un\'esperienza che mi serve solo per fare curriculum e poi cambiare.',score:0},
+        ]},
+    ],
+    2: [
+      { q:'Con un ruolo più impegnativo, come pensi di conciliarlo con la famiglia?', legal:false, dimension:'bias_awareness',
+        a:[
+          {t:'Faccio notare che è una domanda che non farebbero a un candidato uomo, e riporto il discorso sulle mie competenze.',score:0},
+          {t:'Spiego in dettaglio come organizzerei la mia vita privata per rassicurarli.',score:0},
+          {t:'Per ora non ho figli — spero basti a chiudere il discorso.',score:0},
+          {t:'Chiedo se possiamo mettere questa parte a verbale, così risulta chi l\'ha chiesto.',score:0},
+        ]},
+      { q:'Con l\'azienda che cresce, ti chiedono di occuparti anche di cose non previste all\'inizio (formazione dei nuovi assunti, rapporti con un fornitore IT esterno) senza un budget dedicato a te per crescere in cambio. Come la affronti?', dimension:'role_understanding',
+        a:[
+          {t:'La affronto, ma ne parlo apertamente con chi mi coordina — non per rifiutare, ma per rendere esplicito che il mio ruolo si sta allargando e chiedere cosa cambia per me nel tempo.',score:2},
+          {t:'La affronto senza dire nulla, tanto fa parte del lavorare in una piccola realtà.',score:1},
+          {t:'La rifiuto: non è nella mia job description originale.',score:1},
+          {t:'La accetto sperando che qualcuno se ne accorga da solo, prima o poi.',score:0},
+        ]},
+    ],
+    3: [
+      { q:'Per un ruolo così senior, non pensi che sia difficile per una donna gestire un team di soli uomini?', legal:false, dimension:'bias_awareness',
+        a:[
+          {t:'Rispondo che la domanda parte da un pregiudizio, e chiedo quali competenze di leadership cercano davvero.',score:0},
+          {t:'Rassicuro dicendo che "so gestirmi bene con gli uomini".',score:0},
+          {t:'Evito di rispondere e cambio argomento da sola.',score:0},
+          {t:'Rispondo con una domanda a mia volta: "Lo chiedereste anche a un candidato uomo?"',score:0},
+        ]},
+      { q:'Con l\'esperienza che hai accumulato qui, un\'azienda più strutturata potrebbe iniziare a offrirti condizioni migliori. Cosa ti farebbe restare, se qualcosa dovesse farlo?', dimension:'retention_intent',
+        a:[
+          {t:'Dico onestamente cosa mi terrebbe — impatto diretto, autonomia, o crescita concreta — invece di rispondere genericamente che "mi trovo bene".',score:2},
+          {t:'Dico che resterei per lealtà verso chi mi ha assunta quando ero junior.',score:1},
+          {t:'Dico che non ci ho ancora pensato seriamente.',score:1},
+          {t:'Dico che comunque resterei solo finché non arriva un\'offerta migliore altrove.',score:0},
+        ]},
+    ],
   },
-  startup:{
-    1:{q:'In startup le priorità cambiano ogni settimana. Come reagisci se il progetto su cui lavoravi viene abbandonato all\'improvviso?',
-      a:[
-        {t:'Chiedo il motivo del cambio, poi mi concentro su cosa serve ora invece di restare legata al progetto perso.',score:2},
-        {t:'Mi informo rapidamente su cosa serve ora e mi ributto dentro, anche se resto convinta che il progetto abbandonato avrebbe funzionato.',score:1},
-        {t:'Chiedo di documentare comunque il lavoro fatto finora, nel caso servisse in futuro, prima di passare oltre.',score:1},
-        {t:'Mi demoralizzo e rallento finché non arrivano istruzioni chiare.',score:0},
-      ]},
-    2:{q:'Come decidi cosa NON fare quando le risorse sono estremamente limitate?',
-      a:[
-        {t:'Valuto impatto e costo di ogni cosa, e comunico esplicitamente cosa resta fuori e perché.',score:2},
-        {t:'Taglio per prima cosa quello che sembra più rimandabile a occhio, e aggiusto il tiro se qualcuno protesta.',score:1},
-        {t:'Chiedo a ciascuno del team di rinunciare al 20% del proprio carico, in modo uguale per tutti.',score:1},
-        {t:'Lascio decidere sempre a chi è più senior di me.',score:0},
-      ]},
-    3:{q:'Come costruiresti un minimo di processo in un team che finora ha sempre lavorato "a caos controllato"?',
-      a:[
-        {t:'Introduco poche regole essenziali alla volta, mostrando il beneficio concreto prima di chiederne l\'adozione.',score:2},
-        {t:'Propongo al team di scegliere insieme una sola regola da provare per due settimane, poi valutiamo.',score:1},
-        {t:'Impongo subito un processo strutturato completo, per abituarli fin da subito.',score:1},
-        {t:'Lascio che il caos continui, tanto "in startup funziona così".',score:0},
-      ]},
+
+  // ────────────────────────────────────────────────────────────
+  // STARTUP — slot1 invariata, slot2 NUOVA: versatilità/passione per
+  // l'idea e il team (non solo "sai fare il lavoro")
+  // ────────────────────────────────────────────────────────────
+  startup: {
+    1: [
+      { q:'In startup le priorità cambiano ogni settimana. Come reagisci se il progetto su cui lavoravi viene abbandonato all\'improvviso?', dimension:'resilience',
+        a:[
+          {t:'Chiedo il motivo del cambio, poi mi concentro su cosa serve ora invece di restare legata al progetto perso.',score:2},
+          {t:'Mi informo rapidamente su cosa serve ora e mi ributto dentro, anche se resto convinta che il progetto abbandonato avrebbe funzionato.',score:1},
+          {t:'Chiedo di documentare comunque il lavoro fatto finora, nel caso servisse in futuro, prima di passare oltre.',score:1},
+          {t:'Mi demoralizzo e rallento finché non arrivano istruzioni chiare.',score:0},
+        ]},
+      { q:'Il founder ti chiede di occuparti anche di una cosa fuori dal tuo ruolo — non hai mai fatto customer support, ma oggi serve rispondere a un cliente arrabbiato. Cosa fai?', dimension:'versatility',
+        a:[
+          {t:'Rispondo io stessa, chiedendo aiuto solo se mi blocco davvero — in una startup i confini di ruolo sono fluidi per definizione.',score:2},
+          {t:'Rispondo, ma faccio notare dopo che servirebbe chiarire chi si occupa di cosa in futuro, per non diventare la soluzione di default a tutto.',score:2},
+          {t:'Lo faccio, ma senza dirlo a nessuno: se va male, meglio che passi inosservato.',score:1},
+          {t:'Chiedo che se ne occupi chi è più adatto — non è il mio lavoro.',score:0},
+        ]},
+    ],
+    2: [
+      { q:'Come decidi cosa NON fare quando le risorse sono estremamente limitate?', dimension:'autonomy',
+        a:[
+          {t:'Valuto impatto e costo di ogni cosa, e comunico esplicitamente cosa resta fuori e perché.',score:2},
+          {t:'Taglio per prima cosa quello che sembra più rimandabile a occhio, e aggiusto il tiro se qualcuno protesta.',score:1},
+          {t:'Chiedo a ciascuno del team di rinunciare al 20% del proprio carico, in modo uguale per tutti.',score:1},
+          {t:'Lascio decidere sempre a chi è più senior di me.',score:0},
+        ]},
+      { q:'Sei a metà di un pivot: il prodotto su cui hai lavorato per mesi viene abbandonato per un\'idea nuova che non ti convince del tutto. Cosa fai?', dimension:'passion_fit',
+        a:[
+          {t:'Chiedo di capire a fondo il ragionamento dietro il pivot prima di giudicare — potrei non avere tutte le informazioni che ha il founder.',score:2},
+          {t:'Esprimo i miei dubbi apertamente, ma continuo a lavorare con impegno come richiesto.',score:2},
+          {t:'Mi butto comunque nella nuova direzione, anche senza essere del tutto convinta, senza dirlo a nessuno.',score:1},
+          {t:'Comincio silenziosamente a valutare altre opportunità, senza dirlo a nessuno.',score:0},
+        ]},
+    ],
+    3: [
+      { q:'Come costruiresti un minimo di processo in un team che finora ha sempre lavorato "a caos controllato"?', dimension:'team_fit',
+        a:[
+          {t:'Introduco poche regole essenziali alla volta, mostrando il beneficio concreto prima di chiederne l\'adozione.',score:2},
+          {t:'Propongo al team di scegliere insieme una sola regola da provare per due settimane, poi valutiamo.',score:1},
+          {t:'Impongo subito un processo strutturato completo, per abituarli fin da subito.',score:1},
+          {t:'Lascio che il caos continui, tanto "in startup funziona così".',score:0},
+        ]},
+      { q:'Un\'azienda più grande e strutturata ti offre uno stipendio più alto e meno incertezza. La tua startup sta ancora lottando per il product-market fit. Cosa consideri davvero, oltre ai soldi?', dimension:'passion_fit',
+        a:[
+          {t:'Mi chiedo onestamente se credo ancora nella direzione del prodotto e nel team — è quello, non solo lo stipendio, a reggere nei momenti difficili di una startup.',score:2},
+          {t:'Valuto principalmente la sicurezza economica a lungo termine.',score:1},
+          {t:'Resto per lealtà verso il team, anche se non sono più sicura del prodotto.',score:1},
+          {t:'Non me lo chiedo nemmeno seriamente — un\'offerta migliore si accetta e basta.',score:0},
+        ]},
+    ],
   },
-  consulenza:{
-    1:{q:'Un cliente ti chiede una stima che sai essere irrealistica in così poco tempo. Cosa rispondi?',
-      a:[
-        {t:'Spiego con dati alla mano perché quella tempistica non è realistica, e propongo un\'alternativa concreta.',score:2},
-        {t:'Accetto la stima ma metto per iscritto le condizioni sotto cui potrebbe non essere rispettata.',score:1},
-        {t:'Propongo di consegnare una prima versione ridotta nei tempi richiesti, il resto dopo.',score:1},
-        {t:'Dico semplicemente che non è possibile, senza proporre alternative.',score:0},
-      ]},
-    2:{q:'Come gestisci un progetto in cui il cliente cambia idea sugli obiettivi a metà percorso?',
-      a:[
-        {t:'Rimetto in chiaro impatto e costi del cambiamento, poi aggiorno il piano con il cliente esplicitamente.',score:2},
-        {t:'Accolgo subito la nuova direzione per non rallentare il cliente, e gestisco internamente l\'impatto su tempi e budget.',score:1},
-        {t:'Chiedo un giorno per valutare l\'impatto prima di rispondere, anche se il cliente vorrebbe una risposta immediata.',score:1},
-        {t:'Continuo secondo il piano originale, ignorando la richiesta del cliente.',score:0},
-      ]},
-    3:{q:'Come costruisci credibilità con un board che non ti conosce, in una singola presentazione?',
-      a:[
-        {t:'Parto dai loro obiettivi di business, non dalla tecnica, e lascio spazio a domande scomode.',score:2},
-        {t:'Apro mostrando risultati ottenuti in progetti comparabili, per costruire fiducia prima di entrare nel merito.',score:1},
-        {t:'Mostro più slide tecniche possibili, per dimostrare competenza.',score:1},
-        {t:'Mi affido soprattutto al titolo/ruolo per farmi credere.',score:0},
-      ]},
+
+  // ────────────────────────────────────────────────────────────
+  // CONSULENZA — slot1 invariata, slot2 NUOVA, differenziata per
+  // ruolo (byRole): navigare l'ambiguità tecnica di un cliente,
+  // presentare/difendere un risultato, guidare senza autorità formale
+  // ────────────────────────────────────────────────────────────
+  consulenza: {
+    1: [
+      { q:'Un cliente ti chiede una stima che sai essere irrealistica in così poco tempo. Cosa rispondi?', dimension:'client_management',
+        a:[
+          {t:'Spiego con dati alla mano perché quella tempistica non è realistica, e propongo un\'alternativa concreta.',score:2},
+          {t:'Accetto la stima ma metto per iscritto le condizioni sotto cui potrebbe non essere rispettata.',score:1},
+          {t:'Propongo di consegnare una prima versione ridotta nei tempi richiesti, il resto dopo.',score:1},
+          {t:'Dico semplicemente che non è possibile, senza proporre alternative.',score:0},
+        ]},
+      { dimension:'technical_delivery',
+        byRole:{
+          analyst:{ q:'Il cliente ti gira un export Excel disordinato e ti dice solo "fateci capire come va il business". Nessun brief più preciso. Come parti?',
+            a:[
+              {t:'Faccio io stessa un giro esplorativo dei dati per formulare 2-3 ipotesi di business plausibili, poi le verifico con il cliente prima di costruire qualunque report definitivo.',score:2},
+              {t:'Costruisco subito una dashboard con tutte le metriche standard che di solito servono in casi simili.',score:1},
+              {t:'Chiedo al cliente un brief più dettagliato prima di iniziare qualsiasi analisi.',score:1},
+              {t:'Aspetto che un collega più senior mi dica da dove partire.',score:0},
+            ]},
+          scientist:{ q:'Il cliente ti chiede "un modello predittivo" senza specificare cosa vuole prevedere né con quale orizzonte temporale. Come parti?',
+            a:[
+              {t:'Propongo al cliente 2-3 formulazioni concrete del problema (cosa, quando, per chi) prima di scrivere una riga di codice.',score:2},
+              {t:'Costruisco un primo modello sulla metrica che sembra più ovvia, e lo mostro come punto di partenza.',score:1},
+              {t:'Chiedo a un collega più senior di interpretare cosa intende davvero il cliente.',score:1},
+              {t:'Aspetto un brief più dettagliato prima di iniziare.',score:0},
+            ]},
+          ml:{ q:'Il cliente vuole "l\'AI in produzione entro fine mese", ma non ha ancora nessuna infrastruttura né dati puliti. Come parti?',
+            a:[
+              {t:'Propongo un percorso a tappe realistico (dati → prototipo → produzione), spiegando cosa è davvero fattibile in un mese e cosa no.',score:2},
+              {t:'Costruisco subito un prototipo negli ambienti che ho a disposizione io, ignorando l\'infrastruttura del cliente per ora.',score:1},
+              {t:'Chiedo a un collega più senior di negoziare i tempi con il cliente al posto mio.',score:1},
+              {t:'Accetto la scadenza così com\'è e comincio subito a scrivere codice.',score:0},
+            ]},
+          ai:{ q:'Il cliente vuole "un chatbot con l\'AI" senza sapere bene cosa vuole che faccia. Come parti?',
+            a:[
+              {t:'Faccio qualche domanda mirata per capire i casi d\'uso reali che il chatbot dovrebbe coprire, prima di proporre qualunque soluzione tecnica.',score:2},
+              {t:'Propongo subito un prototipo generico basato su un LLM, per dargli qualcosa da vedere.',score:1},
+              {t:'Chiedo a un collega più senior di tradurre la richiesta del cliente in specifiche tecniche.',score:1},
+              {t:'Comincio a costruire aspettando che il cliente chiarisca da solo cosa vuole.',score:0},
+            ]},
+          dataeng:{ q:'Il cliente vuole "tutti i dati in un unico posto" senza sapere quali sistemi ha né come sono strutturati. Come parti?',
+            a:[
+              {t:'Faccio prima una mappatura rapida delle fonti dati esistenti col cliente, per capire cosa è realistico integrare e in che ordine.',score:2},
+              {t:'Comincio a costruire la pipeline dal sistema che mi sembra più facile da collegare.',score:1},
+              {t:'Chiedo a un collega più senior di occuparsi della mappatura dei sistemi al posto mio.',score:1},
+              {t:'Aspetto che il cliente fornisca un elenco completo dei propri sistemi prima di iniziare.',score:0},
+            ]},
+        }},
+    ],
+    2: [
+      { q:'Come gestisci un progetto in cui il cliente cambia idea sugli obiettivi a metà percorso?', dimension:'client_management',
+        a:[
+          {t:'Rimetto in chiaro impatto e costi del cambiamento, poi aggiorno il piano con il cliente esplicitamente.',score:2},
+          {t:'Accolgo subito la nuova direzione per non rallentare il cliente, e gestisco internamente l\'impatto su tempi e budget.',score:1},
+          {t:'Chiedo un giorno per valutare l\'impatto prima di rispondere, anche se il cliente vorrebbe una risposta immediata.',score:1},
+          {t:'Continuo secondo il piano originale, ignorando la richiesta del cliente.',score:0},
+        ]},
+      { dimension:'technical_delivery',
+        byRole:{
+          analyst:{ q:'Presenti un\'analisi che smentisce l\'ipotesi che il cliente aveva già in testa prima del progetto. Il cliente non è convinto. Come procedi?',
+            a:[
+              {t:'Mostro i dati grezzi dietro la conclusione, non solo il risultato, e lascio che sia il cliente a fare le domande che gli servono per fidarsi.',score:2},
+              {t:'Ripeto la stessa conclusione con parole diverse, sperando che questa volta la accetti.',score:1},
+              {t:'Ammorbidisco la conclusione per renderla più vicina a quello che il cliente si aspettava.',score:1},
+              {t:'Lascio che sia il mio manager di progetto a difendere il risultato al posto mio.',score:0},
+            ]},
+          scientist:{ q:'Il modello che hai costruito ha una performance più bassa di quanto il cliente si aspettasse, e sospetta che tu abbia sbagliato qualcosa. Come procedi?',
+            a:[
+              {t:'Spiego onestamente i limiti reali del problema (qualità/quantità dei dati disponibili) e cosa servirebbe per fare meglio, senza nascondermi dietro il numero.',score:2},
+              {t:'Provo a migliorare rapidamente il numero prima di mostrare qualunque risultato al cliente.',score:1},
+              {t:'Rassicuro il cliente dicendo che il numero è comunque nella norma di settore.',score:1},
+              {t:'Lascio che sia il mio manager di progetto a spiegare il risultato al cliente.',score:0},
+            ]},
+          ml:{ q:'Il sistema che hai messo in produzione per il cliente ha avuto un incidente (downtime/errori) durante la prima settimana di uso reale. Come procedi?',
+            a:[
+              {t:'Comunico subito al cliente cos\'è successo, l\'impatto reale, e cosa hai già fatto per evitare che si ripeta, prima che se ne accorga da solo.',score:2},
+              {t:'Aspetto che il cliente noti il problema prima di dirglielo.',score:1},
+              {t:'Sistemo il problema in silenzio, se penso che nessuno se ne sia accorto.',score:1},
+              {t:'Lascio che sia il mio manager di progetto a gestire la comunicazione al posto mio.',score:0},
+            ]},
+          ai:{ q:'L\'agente AI che hai costruito per il cliente ha dato una risposta sbagliata a un cliente finale, in modo visibile. Come procedi?',
+            a:[
+              {t:'Analizzo il caso specifico per capire il pattern di errore, e propongo al cliente sia una correzione sia un modo per intercettare casi simili in futuro.',score:2},
+              {t:'Disattivo temporaneamente la funzione incriminata senza spiegare il perché al cliente.',score:1},
+              {t:'Minimizzo l\'accaduto definendolo un caso isolato, senza approfondire.',score:1},
+              {t:'Lascio che sia il mio manager di progetto a gestire la comunicazione al posto mio.',score:0},
+            ]},
+          dataeng:{ q:'La pipeline che hai costruito per il cliente ha propagato dati sbagliati per una settimana prima che qualcuno se ne accorgesse. Come procedi?',
+            a:[
+              {t:'Ricostruisco la cronologia dell\'errore, quantifico l\'impatto reale a valle, e lo comunico al cliente insieme al fix e a un controllo che eviti che riaccada.',score:2},
+              {t:'Sistemo la pipeline e aspetto che sia il cliente a chiedere spiegazioni, se lo fa.',score:1},
+              {t:'Minimizzo l\'accaduto, dato che ora la pipeline funziona correttamente.',score:1},
+              {t:'Lascio che sia il mio manager di progetto a gestire la comunicazione al posto mio.',score:0},
+            ]},
+        }},
+    ],
+    3: [
+      { q:'Come costruisci credibilità con un board che non ti conosce, in una singola presentazione?', dimension:'presentation',
+        a:[
+          {t:'Parto dai loro obiettivi di business, non dalla tecnica, e lascio spazio a domande scomode.',score:2},
+          {t:'Apro mostrando risultati ottenuti in progetti comparabili, per costruire fiducia prima di entrare nel merito.',score:1},
+          {t:'Mostro più slide tecniche possibili, per dimostrare competenza.',score:1},
+          {t:'Mi affido soprattutto al titolo/ruolo per farmi credere.',score:0},
+        ]},
+      { dimension:'technical_delivery',
+        byRole:{
+          analyst:{ q:'Sei responsabile della metodologia di analisi di un intero progetto multi-cliente, e un\'analista junior nel tuo team ha usato un approccio che ritieni sbagliato in un deliverable già inviato. Come procedi?',
+            a:[
+              {t:'Verifico prima l\'impatto reale sul cliente, poi ne parlo con lei privatamente per capire il ragionamento e correggere insieme, non solo il risultato.',score:2},
+              {t:'Correggo io stessa il deliverable senza coinvolgerla, per velocità.',score:1},
+              {t:'La riprendo davanti al resto del team, per essere chiara che non deve succedere di nuovo.',score:1},
+              {t:'Lascio correre, dato che il cliente non se n\'è accorto.',score:0},
+            ]},
+          scientist:{ q:'Sei responsabile della metodologia scientifica di un\'intera practice, e uno scienziato junior ha validato un modello in modo statisticamente scorretto in un progetto già consegnato al cliente. Come procedi?',
+            a:[
+              {t:'Valuto la gravità reale dell\'errore per il cliente, poi lo affronto con lui come occasione di crescita, correggendo insieme la validazione.',score:2},
+              {t:'Correggo io stessa la validazione senza coinvolgerlo, per velocità.',score:1},
+              {t:'Lo segnalo al suo manager di progetto perché se ne occupi lui.',score:1},
+              {t:'Lascio correre, dato che è comunque un errore piccolo.',score:0},
+            ]},
+          ml:{ q:'Sei responsabile degli standard MLOps di un\'intera practice, e un ingegnere junior ha messo in produzione un sistema per un cliente senza monitoring adeguato. Come procedi?',
+            a:[
+              {t:'Aggiungo subito il monitoring mancante per proteggere il cliente, poi lavoro con lui su perché è successo, non solo su cosa è successo.',score:2},
+              {t:'Sistemo io stessa il problema senza coinvolgerlo, per velocità.',score:1},
+              {t:'Lo segnalo al suo manager di progetto perché se ne occupi lui.',score:1},
+              {t:'Lascio correre, dato che per ora il sistema funziona comunque.',score:0},
+            ]},
+          ai:{ q:'Sei responsabile degli standard di sicurezza/affidabilità AI di un\'intera practice, e un collega junior ha distribuito un agente AI a un cliente senza test sui casi limite. Come procedi?',
+            a:[
+              {t:'Verifico subito i rischi reali per il cliente, poi lavoro con lui per costruire una checklist di test che possa riusare da qui in avanti.',score:2},
+              {t:'Sistemo io stessa il problema senza coinvolgerlo, per velocità.',score:1},
+              {t:'Lo segnalo al suo manager di progetto perché se ne occupi lui.',score:1},
+              {t:'Lascio correre, dato che per ora nessun cliente si è lamentato.',score:0},
+            ]},
+          dataeng:{ q:'Sei responsabile degli standard di data governance di un\'intera practice, e un collega junior ha collegato una fonte dati del cliente senza verificarne la qualità. Come procedi?',
+            a:[
+              {t:'Verifico subito l\'impatto reale sui deliverable già consegnati, poi lavoro con lui su come verificare le fonti in futuro.',score:2},
+              {t:'Sistemo io stessa il problema senza coinvolgerlo, per velocità.',score:1},
+              {t:'Lo segnalo al suo manager di progetto perché se ne occupi lui.',score:1},
+              {t:'Lascio correre, dato che per ora nessuno se n\'è accorto.',score:0},
+            ]},
+        }},
+    ],
   },
-  corporate:{
-    1:{q:'In una grande azienda le decisioni passano da molti livelli. Come reagisci se una tua proposta viene bloccata senza spiegazioni chiare?',
-      a:[
-        {t:'Chiedo direttamente e con calma quali sono i criteri o le obiezioni, per capire come muovermi.',score:2},
-        {t:'Modifico la proposta sulla base delle mie ipotesi su cosa potrebbe non essere piaciuto, e la ripropongo.',score:1},
-        {t:'Ne parlo prima informalmente con un collega che conosce meglio le dinamiche di questo comitato.',score:1},
-        {t:'Lascio perdere subito e non ne parlo più.',score:0},
-      ]},
-    2:{q:'Come costruisci consenso tra reparti con obiettivi diversi tra loro?',
-      a:[
-        {t:'Cerco l\'interesse comune sottostante e lo uso come base per la proposta.',score:2},
-        {t:'Preparo per ogni reparto una versione della proposta cucita sui loro obiettivi specifici, e le presento separatamente.',score:1},
-        {t:'Porto la proposta a un incontro con tutti i reparti insieme fin da subito, senza prepararla prima con nessuno.',score:1},
-        {t:'Aspetto che sia un manager più senior a risolvere il disaccordo.',score:0},
-      ]},
-    3:{q:'Come gestiresti un team distribuito su più sedi con priorità spesso in conflitto tra loro?',
-      a:[
-        {t:'Rendo esplicite le priorità condivise a livello aziendale, e le uso per arbitrare i conflitti locali.',score:2},
-        {t:'Organizzo un confronto regolare tra i responsabili di sede per negoziare le priorità caso per caso.',score:1},
-        {t:'Lascio che ogni sede scelga le proprie priorità in autonomia, mi fido dei responsabili locali.',score:1},
-        {t:'Impongo le priorità della sede principale a tutte le altre.',score:0},
-      ]},
+
+  // ────────────────────────────────────────────────────────────
+  // CORPORATE — slot1 invariata, slot2 NUOVA, differenziata per
+  // ruolo (byRole): profondità tecnica declinata sull'artefatto di
+  // ciascun ruolo, a difficoltà/scala crescente
+  // ────────────────────────────────────────────────────────────
+  corporate: {
+    1: [
+      { q:'In una grande azienda le decisioni passano da molti livelli. Come reagisci se una tua proposta viene bloccata senza spiegazioni chiare?', dimension:'organizational_navigation',
+        a:[
+          {t:'Chiedo direttamente e con calma quali sono i criteri o le obiezioni, per capire come muovermi.',score:2},
+          {t:'Modifico la proposta sulla base delle mie ipotesi su cosa potrebbe non essere piaciuto, e la ripropongo.',score:1},
+          {t:'Ne parlo prima informalmente con un collega che conosce meglio le dinamiche di questo comitato.',score:1},
+          {t:'Lascio perdere subito e non ne parlo più.',score:0},
+        ]},
+      { dimension:'technical_depth',
+        byRole:{
+          analyst:{ q:'Consegni una dashboard che verrà riusata da altri team di business unit diverse, senza che tu possa spiegare loro di persona ogni scelta fatta. Come la documenti?',
+            a:[
+              {t:'Documento definizioni delle metriche, fonti dati e assunzioni direttamente nella dashboard, non in un file separato che nessuno leggerà.',score:2},
+              {t:'Aggiungo un file readme separato con le spiegazioni, così la dashboard resta pulita.',score:1},
+              {t:'Mi rendo disponibile a rispondere a domande via chat quando servirà.',score:1},
+              {t:'La dashboard è abbastanza intuitiva da non richiedere spiegazioni aggiuntive.',score:0},
+            ]},
+          scientist:{ q:'Il modello che consegni verrà probabilmente riaddestrato o modificato da un altro team tra un anno, quando tu non sarai più su questo progetto. Cosa lasci scritto?',
+            a:[
+              {t:'Documento assunzioni, validazione e limiti del modello in una forma che chiunque potrà riprendere senza dover indovinare.',score:2},
+              {t:'Lascio commenti minimi direttamente nel codice.',score:1},
+              {t:'Mi rendo disponibile a essere contattata quando servirà.',score:1},
+              {t:'Do per scontato che il codice sia abbastanza chiaro da spiegarsi da solo.',score:0},
+            ]},
+          ml:{ q:'La pipeline che metti in produzione verrà probabilmente gestita da un team SRE/platform che non l\'ha scritta. Cosa prepari perché possano intervenire senza di te?',
+            a:[
+              {t:'Preparo un runbook chiaro con monitoring e alerting, pensato per chi la userà, non per chi l\'ha scritta.',score:2},
+              {t:'Lascio commenti nel codice della pipeline.',score:1},
+              {t:'Mi rendo reperibile in caso di problemi.',score:1},
+              {t:'Do per scontato che la pipeline sia abbastanza lineare da non richiedere altro.',score:0},
+            ]},
+          ai:{ q:'L\'agente/assistente che costruisci verrà integrato da un altro team in un prodotto che non conosci ancora. Cosa documenti sui suoi limiti?',
+            a:[
+              {t:'Documento esplicitamente i casi in cui il sistema non va fidato e i suoi failure mode conosciuti, non solo cosa sa fare.',score:2},
+              {t:'Lascio commenti minimi nel codice che lo orchestra.',score:1},
+              {t:'Mi rendo reperibile per rispondere a domande quando servirà.',score:1},
+              {t:'Do per scontato che i suoi limiti siano abbastanza evidenti da soli.',score:0},
+            ]},
+          dataeng:{ q:'La pipeline dati che costruisci alimenterà modelli e dashboard di team che non conosci. Cosa documenti sugli schema/contratti dei dati?',
+            a:[
+              {t:'Definisco contratti dati versionati e soglie di qualità esplicite, così chi li consuma sa cosa aspettarsi.',score:2},
+              {t:'Lascio commenti minimi nel codice ETL.',score:1},
+              {t:'Mi rendo reperibile in caso di problemi.',score:1},
+              {t:'Do per scontato che lo schema sia abbastanza chiaro da solo.',score:0},
+            ]},
+        }},
+    ],
+    2: [
+      { q:'Come costruisci consenso tra reparti con obiettivi diversi tra loro?', dimension:'organizational_navigation',
+        a:[
+          {t:'Cerco l\'interesse comune sottostante e lo uso come base per la proposta.',score:2},
+          {t:'Preparo per ogni reparto una versione della proposta cucita sui loro obiettivi specifici, e le presento separatamente.',score:1},
+          {t:'Porto la proposta a un incontro con tutti i reparti insieme fin da subito, senza prepararla prima con nessuno.',score:1},
+          {t:'Aspetto che sia un manager più senior a risolvere il disaccordo.',score:0},
+        ]},
+      { dimension:'technical_depth',
+        byRole:{
+          analyst:{ q:'Due dipartimenti chiedono numeri diversi sulla stessa metrica di business, calcolata con logiche diverse, ed entrambi vogliono che tu confermi la loro versione. Come procedi?',
+            a:[
+              {t:'Chiarisco le due definizioni operative della metrica, mostro dove divergono, e propongo una definizione unica condivisa da adottare andando avanti.',score:2},
+              {t:'Calcolo entrambe le versioni e le presento senza commentare quale sia più corretta, lasciando decidere a loro.',score:1},
+              {t:'Scelgo la versione del dipartimento più senior tra i due.',score:1},
+              {t:'Do ragione a entrambi separatamente, per non scontentare nessuno.',score:0},
+            ]},
+          scientist:{ q:'Un modello che hai costruito produce risultati che un dipartimento vuole usare per giustificare una decisione già presa, anche se i dati non la supportano chiaramente. Come procedi?',
+            a:[
+              {t:'Comunico esplicitamente cosa il modello supporta e cosa no, separando l\'evidenza dalla decisione che ne faranno.',score:2},
+              {t:'Modifico leggermente la presentazione dei risultati per renderli più allineati a quello che si aspettano.',score:1},
+              {t:'Mi rifiuto di condividere i risultati finché non cambiano la decisione.',score:1},
+              {t:'Presento i risultati così come richiesto, senza commentare.',score:0},
+            ]},
+          ml:{ q:'Un sistema che gestisci deve rispettare SLA diversi e in parte incompatibili richiesti da due team diversi (uno vuole latenza minima, l\'altro accuratezza massima). Come procedi?',
+            a:[
+              {t:'Rendo esplicito il trade-off tecnico ai due team e li coinvolgo nella scelta della priorità, invece di deciderla da sola in silenzio.',score:2},
+              {t:'Ottimizzo per il team che ha fatto la richiesta più urgente.',score:1},
+              {t:'Provo a soddisfare entrambi gli SLA contemporaneamente, anche sapendo che richiederà più tempo di quanto dichiarato.',score:1},
+              {t:'Scelgo io la priorità che mi sembra tecnicamente più sensata, senza coinvolgere nessuno dei due team.',score:0},
+            ]},
+          ai:{ q:'Un team vuole che l\'agente AI risponda sempre in modo definitivo (mai "non lo so"), un altro team teme che questo produca risposte sbagliate presentate con sicurezza. Come procedi?',
+            a:[
+              {t:'Mostro a entrambi i team dati concreti sul tasso di errore quando il sistema risponde con falsa sicurezza, e uso quei dati per guidare la decisione insieme.',score:2},
+              {t:'Configuro il sistema secondo le richieste del team che ha chiesto per primo.',score:1},
+              {t:'Aggiungo un disclaimer generico a tutte le risposte, per accontentare entrambe le richieste senza scegliere.',score:1},
+              {t:'Lascio decidere al mio manager senza portare io stessa dei dati.',score:0},
+            ]},
+          dataeng:{ q:'Due team a valle vogliono che la stessa pipeline dati abbia proprietà incompatibili — uno vuole dati freschissimi quasi in tempo reale, l\'altro vuole dati validati e stabili una volta al giorno. Come procedi?',
+            a:[
+              {t:'Propongo un\'architettura a doppio livello (stream+batch) e ne spiego chiaramente i costi di manutenzione a entrambi i team, prima di costruirla.',score:2},
+              {t:'Costruisco solo la versione richiesta dal team più urgente.',score:1},
+              {t:'Provo a fondere le due richieste in un compromesso che non soddisfa bene nessuno dei due casi d\'uso.',score:1},
+              {t:'Decido da sola quale dei due team ha ragione, senza consultare nessuno.',score:0},
+            ]},
+        }},
+    ],
+    3: [
+      { q:'Come gestiresti un team distribuito su più sedi con priorità spesso in conflitto tra loro?', dimension:'organizational_navigation',
+        a:[
+          {t:'Rendo esplicite le priorità condivise a livello aziendale, e le uso per arbitrare i conflitti locali.',score:2},
+          {t:'Organizzo un confronto regolare tra i responsabili di sede per negoziare le priorità caso per caso.',score:1},
+          {t:'Lascio che ogni sede scelga le proprie priorità in autonomia, mi fido dei responsabili locali.',score:1},
+          {t:'Impongo le priorità della sede principale a tutte le altre.',score:0},
+        ]},
+      { dimension:'technical_depth',
+        byRole:{
+          analyst:{ q:'Ti chiedono di definire lo standard con cui tutta l\'azienda calcolerà una metrica chiave da qui in avanti, sapendo che cambierà i numeri storici di più team. Come procedi?',
+            a:[
+              {t:'Coinvolgo i team impattati nella definizione dello standard prima di renderlo ufficiale, e pianifico esplicitamente la transizione dai numeri vecchi.',score:2},
+              {t:'Definisco lo standard tecnicamente corretto e lo comunico a tutti una volta pronto.',score:1},
+              {t:'Lascio che ogni team continui a usare la propria definizione, per evitare frizioni.',score:1},
+              {t:'Impongo lo standard dall\'alto, senza spiegazioni, confidando che si adatteranno.',score:0},
+            ]},
+          scientist:{ q:'Sei responsabile di definire gli standard di validazione che tutti i modelli del tuo dominio dovranno rispettare prima di andare in produzione. Da dove parti?',
+            a:[
+              {t:'Parto da casi reali in cui la mancanza di standard ha causato problemi, per costruire regole che risolvono problemi concreti, non teorici.',score:2},
+              {t:'Adatto uno standard esterno di settore così com\'è, senza modifiche.',score:1},
+              {t:'Scrivo lo standard più rigoroso possibile, anche se rallenterà molto i team più piccoli.',score:1},
+              {t:'Lascio che sia ogni data scientist a giudicare caso per caso cosa è "abbastanza validato".',score:0},
+            ]},
+          ml:{ q:'Sei responsabile di definire come tutta l\'azienda gestisce il monitoraggio e il retraining dei modelli in produzione. Da dove parti?',
+            a:[
+              {t:'Parto dagli incidenti reali già avvenuti per dare priorità a cosa monitorare per primo, coinvolgendo chi li ha vissuti.',score:2},
+              {t:'Replico lo stack di monitoring più diffuso nel settore, così com\'è.',score:1},
+              {t:'Definisco soglie molto conservative ovunque, anche a costo di generare molti falsi allarmi.',score:1},
+              {t:'Lascio che ogni team decida da sé come monitorare i propri modelli.',score:0},
+            ]},
+          ai:{ q:'Sei responsabile di definire le linee guida aziendali su quando è appropriato usare un agente autonomo invece di un sistema supervisionato. Da dove parti?',
+            a:[
+              {t:'Parto dal livello di conseguenza di un errore in ciascun caso d\'uso, non dalla tecnologia disponibile, per decidere dove l\'autonomia è accettabile.',score:2},
+              {t:'Applico ovunque lo stesso livello di autonomia che ha funzionato bene nel mio progetto.',score:1},
+              {t:'Vieto l\'autonomia ovunque, per essere prudente.',score:1},
+              {t:'Lascio decidere caso per caso a ogni team, senza linee guida comuni.',score:0},
+            ]},
+          dataeng:{ q:'Sei responsabile di definire gli standard di qualità e governance dei dati per tutta l\'azienda. Da dove parti?',
+            a:[
+              {t:'Parto dai problemi di qualità dati che hanno già causato danni concreti ai team a valle, per dare priorità a quelli.',score:2},
+              {t:'Applico un framework di data governance standard di settore, senza adattarlo al contesto.',score:1},
+              {t:'Imposto controlli molto rigidi su tutti i dati, anche a costo di rallentare molto i team.',score:1},
+              {t:'Lascio che ogni team definisca da sé i propri standard di qualità.',score:0},
+            ]},
+        }},
+    ],
   },
-  pa:{
-    1:{q:'Nel pubblico i tempi decisionali sono spesso lunghi. Come reagisci a un progetto che richiede approvazioni su più livelli prima di partire?',
-      a:[
-        {t:'Mappo in anticipo chi deve approvare cosa, e preparo il materiale su misura per ciascun passaggio.',score:2},
-        {t:'Sollecito periodicamente ogni ufficio coinvolto, per restare visibile nella loro lista di priorità.',score:1},
-        {t:'Chiedo a un referente più esperto di seguire lui i passaggi burocratici, mentre mi concentro sulla parte tecnica.',score:1},
-        {t:'Provo a saltare i passaggi che ritengo superflui.',score:0},
-      ]},
-    2:{q:'Come comunicheresti un risultato tecnico complesso a un board che non ha competenze tecniche?',
-      a:[
-        {t:'Traduco il risultato in impatto concreto per i cittadini/l\'ente, evitando gergo tecnico non necessario.',score:2},
-        {t:'Preparo due versioni della stessa presentazione, una tecnica di riserva nel caso qualcuno faccia domande di dettaglio.',score:1},
-        {t:'Presento gli stessi dettagli tecnici che userei con un collega, confidando che le domande chiariranno il resto.',score:1},
-        {t:'Semplifico così tanto da perdere informazioni rilevanti.',score:0},
-      ]},
-    3:{q:'Come porteresti innovazione in un contesto con vincoli normativi stringenti?',
-      a:[
-        {t:'Studio i vincoli a fondo per trovare lo spazio di manovra reale, invece di ignorarli o arrendermi subito.',score:2},
-        {t:'Propongo una soluzione già ridotta preventivamente per stare sicuramente dentro ai vincoli noti, anche a costo di renderla meno ambiziosa.',score:1},
-        {t:'Propongo soluzioni innovative ignorando i vincoli, sperando che vengano poi adattate.',score:1},
-        {t:'Evito qualsiasi proposta che richieda di confrontarsi con la normativa.',score:0},
-      ]},
+
+  // ────────────────────────────────────────────────────────────
+  // PA — slot1 invariata, slot2 NUOVA: rigore metodologico/accademico
+  // e comunicazione scientifica standard — nessuna differenziazione
+  // per ruolo (le domande restano identiche per tutti i ruoli)
+  // ────────────────────────────────────────────────────────────
+  pa: {
+    1: [
+      { q:'Nel pubblico i tempi decisionali sono spesso lunghi. Come reagisci a un progetto che richiede approvazioni su più livelli prima di partire?', dimension:'bureaucracy_navigation',
+        a:[
+          {t:'Mappo in anticipo chi deve approvare cosa, e preparo il materiale su misura per ciascun passaggio.',score:2},
+          {t:'Sollecito periodicamente ogni ufficio coinvolto, per restare visibile nella loro lista di priorità.',score:1},
+          {t:'Chiedo a un referente più esperto di seguire lui i passaggi burocratici, mentre mi concentro sulla parte tecnica.',score:1},
+          {t:'Provo a saltare i passaggi che ritengo superflui.',score:0},
+        ]},
+      { q:'Nella sua analisi, come giustifica la scelta di un metodo statistico rispetto alle alternative? Ce lo spieghi come se fossi una revisore scettica.', dimension:'technical_rigor',
+        a:[
+          {t:'Spiego le assunzioni del metodo scelto, perché reggono nel mio caso, e cosa cambierebbe con un\'alternativa — inclusi i limiti.',score:2},
+          {t:'Cito la letteratura che usa lo stesso metodo in casi simili, come base per la scelta.',score:1},
+          {t:'Dico che è il metodo più diffuso nel settore, quindi affidabile.',score:1},
+          {t:'Dico che ho provato più approcci e ho tenuto quello con il risultato migliore.',score:0},
+        ]},
+    ],
+    2: [
+      { q:'Come comunicheresti un risultato tecnico complesso a un board che non ha competenze tecniche?', dimension:'academic_communication',
+        a:[
+          {t:'Traduco il risultato in impatto concreto per i cittadini/l\'ente, evitando gergo tecnico non necessario.',score:2},
+          {t:'Preparo due versioni della stessa presentazione, una tecnica di riserva nel caso qualcuno faccia domande di dettaglio.',score:1},
+          {t:'Presento gli stessi dettagli tecnici che userei con un collega, confidando che le domande chiariranno il resto.',score:1},
+          {t:'Semplifico così tanto da perdere informazioni rilevanti.',score:0},
+        ]},
+      { q:'Un revisore anonimo contesta la riproducibilità della sua analisi: con gli stessi dati non ottiene gli stessi risultati. Come risponde?', dimension:'methodology',
+        a:[
+          {t:'Verifico prima se ho documentato ogni passaggio (versioni dati, parametri, seed) — se manca qualcosa, è un problema mio da correggere, non del revisore.',score:2},
+          {t:'Chiedo al revisore di condividere il suo codice, per capire dove diverge dal mio.',score:1},
+          {t:'Rispondo che piccole differenze numeriche sono normali e non invalidano il risultato.',score:1},
+          {t:'Difendo il risultato originale, assumendo che il revisore abbia sbagliato qualcosa.',score:0},
+        ]},
+    ],
+    3: [
+      { q:'Come porteresti innovazione in un contesto con vincoli normativi stringenti?', dimension:'bureaucracy_navigation',
+        a:[
+          {t:'Studio i vincoli a fondo per trovare lo spazio di manovra reale, invece di ignorarli o arrendermi subito.',score:2},
+          {t:'Propongo una soluzione già ridotta preventivamente per stare sicuramente dentro ai vincoli noti, anche a costo di renderla meno ambiziosa.',score:1},
+          {t:'Propongo soluzioni innovative ignorando i vincoli, sperando che vengano poi adattate.',score:1},
+          {t:'Evito qualsiasi proposta che richieda di confrontarsi con la normativa.',score:0},
+        ]},
+      { q:'Deve presentare un risultato che contraddice uno studio precedente molto citato nel suo campo, davanti alla comunità scientifica. Come costruisce la credibilità del suo lavoro?', dimension:'academic_communication',
+        a:[
+          {t:'Riconosco esplicitamente lo studio precedente, spiego dove la mia metodologia diverge e perché, e lascio parlare i dati più che l\'autorità della fonte.',score:2},
+          {t:'Enfatizzo la solidità del mio campione/metodo, senza confrontarmi troppo con lo studio precedente.',score:1},
+          {t:'Presento il risultato con cautela, segnalando che potrebbe essere un\'anomalia da verificare ulteriormente.',score:1},
+          {t:'Evito di sottolineare il contrasto, per non entrare in conflitto con autori più affermati.',score:0},
+        ]},
+    ],
   },
 };
 
@@ -1108,6 +1460,93 @@ export const WORLD_DEFS={
             }
           }
         },
+        // Stesso incidente (35% di missing sulla temperatura), raccontato dal
+        // punto di vista di ciascun ruolo — dlg/outs sopra restano il
+        // fallback per classi senza variante propria. Vedi triggerNPC() in
+        // src/game/game.js e career-world-colloqui-ruoli-spec.md §7.
+        roleDlg:{
+          scientist:{
+            // Sostanzialmente l'originale — è lo scenario naturale per questo ruolo.
+            dlg:{
+              spk:'💻 Scenario Tecnico — PMI', color:'var(--warn)',
+              txt:'Hai un dataset di produzione con il 35% di valori mancanti nelle colonne di temperatura. Il manager vuole il modello predittivo per domani. Cosa fai?',
+              chs:[
+                {t:'Imputo con la media e consegno — il manager vuole i risultati.',out:'fast'},
+                {t:'Analizzo il pattern dei missing: se MCAR imputo, se MAR/MNAR discuto con il manager le implicazioni prima di procedere.',out:'rigorous'},
+                {t:'Chiedo più dati storici per capire il contesto prima di scegliere la strategia.',out:'context'},
+                {t:'Costruisco una pipeline di imputazione automatica con multiple imputation, anche se richiederà più tempo del previsto.',out:'overengineer'},
+              ]},
+            outs:{
+              fast:{msg:'Veloce ma rischioso.',stat:{ENERGY:1,SKILL:-1}},
+              rigorous:{msg:'Approccio corretto e comunicabile.',stat:{SKILL:2,CLARITY:1}},
+              context:{msg:'Ottima domanda di business.',stat:{SKILL:1,RADAR:2}},
+              overengineer:{msg:'Tecnicamente solida, ma sproporzionata rispetto al tempo e all\'infrastruttura reali di una PMI con una scadenza a domani.',stat:{SKILL:1,ENERGY:-1}},
+            }},
+          analyst:{
+            dlg:{
+              spk:'💻 Scenario Tecnico — PMI', color:'var(--warn)',
+              txt:'Devi presentare domani al management la dashboard di produzione, ma il 35% delle righe ha temperatura mancante — i grafici mostrano buchi vistosi. Cosa fai?',
+              chs:[
+                {t:'Nascondo i buchi interpolando linearmente i valori, così il grafico appare completo.',out:'fast'},
+                {t:'Mostro i buchi esplicitamente con un\'annotazione visiva, e spiego a voce cosa significano prima che qualcuno se lo chieda.',out:'rigorous'},
+                {t:'Chiedo al manager quanto tempo posso avere per capire perché quei dati mancano, prima di presentare qualsiasi cosa.',out:'context'},
+                {t:'Costruisco un secondo modello di stima dei valori mancanti solo per la dashboard, con relativa fascia di incertezza mostrata a schermo.',out:'overengineer'},
+              ]},
+            outs:{
+              fast:{msg:'Il grafico è pulito, ma la decisione che il management prenderà su quei dati non lo sarà.',stat:{ENERGY:1,SKILL:-1}},
+              rigorous:{msg:'Trasparente e comunicabile — il management decide sapendo cosa sta guardando.',stat:{SKILL:2,CLARITY:1}},
+              context:{msg:'Ottima domanda di business.',stat:{SKILL:1,RADAR:2}},
+              overengineer:{msg:'Tecnicamente solida, ma sproporzionata rispetto al tempo e all\'infrastruttura reali di una PMI con una scadenza a domani.',stat:{SKILL:1,ENERGY:-1}},
+            }},
+          ml:{
+            dlg:{
+              spk:'💻 Scenario Tecnico — PMI', color:'var(--warn)',
+              txt:'Il modello già in produzione ha iniziato a ricevere il 35% delle letture di temperatura mancanti dal sensore IoT. Il manager vuole che il sistema non si fermi. Cosa fai?',
+              chs:[
+                {t:'Aggiungo un fallback silenzioso che usa l\'ultimo valore noto, così il sistema continua a rispondere senza intervento.',out:'fast'},
+                {t:'Metto un alert automatico sul tasso di missing e un fallback esplicito, con un flag di bassa confidenza propagato a valle.',out:'rigorous'},
+                {t:'Controllo prima se il problema è nel sensore o nella pipeline di ingestione, prima di toccare il modello.',out:'context'},
+                {t:'Costruisco un secondo modello dedicato a stimare la temperatura mancante da altri sensori correlati, da usare come input al primo.',out:'overengineer'},
+              ]},
+            outs:{
+              fast:{msg:'Il sistema continua a rispondere, ma nessuno saprà quando le sue predizioni si basano su dati inventati.',stat:{ENERGY:1,SKILL:-1}},
+              rigorous:{msg:'Il sistema resta in piedi E resta onesto su quanto fidarsi di ogni risposta.',stat:{SKILL:2,CLARITY:1}},
+              context:{msg:'Ottima domanda di business.',stat:{SKILL:1,RADAR:2}},
+              overengineer:{msg:'Tecnicamente solida, ma sproporzionata rispetto al tempo e all\'infrastruttura reali di una PMI con una scadenza a domani.',stat:{SKILL:1,ENERGY:-1}},
+            }},
+          ai:{
+            dlg:{
+              spk:'💻 Scenario Tecnico — PMI', color:'var(--warn)',
+              txt:'Il manager vuole per domani un prototipo di assistente AI che risponda alle domande degli operatori di linea sui dati di produzione — ma il 35% dei log di temperatura è mancante o corrotto. Cosa fai?',
+              chs:[
+                {t:'Lascio che l\'assistente risponda comunque, stimando i valori mancanti al volo se richiesti.',out:'fast'},
+                {t:'Istruisco l\'assistente a dichiarare esplicitamente quando una risposta si basa su dati incompleti, invece di darla come certa.',out:'rigorous'},
+                {t:'Chiedo agli operatori stessi cosa fanno oggi, senza AI, quando quei dati mancano — potrebbe già esistere una prassi da replicare.',out:'context'},
+                {t:'Costruisco un livello di validazione dati separato prima che qualsiasi domanda arrivi al modello linguistico.',out:'overengineer'},
+              ]},
+            outs:{
+              fast:{msg:'Un assistente che inventa con sicurezza quando i dati mancano è più pericoloso di uno che ammette di non sapere.',stat:{ENERGY:1,SKILL:-1}},
+              rigorous:{msg:'Un assistente che dichiara la propria incertezza è più utile — e più sicuro — di uno che tace il problema.',stat:{SKILL:2,CLARITY:1}},
+              context:{msg:'Ottima domanda di business.',stat:{SKILL:1,RADAR:2}},
+              overengineer:{msg:'Tecnicamente solida, ma sproporzionata rispetto al tempo e all\'infrastruttura reali di una PMI con una scadenza a domani.',stat:{SKILL:1,ENERGY:-1}},
+            }},
+          dataeng:{
+            dlg:{
+              spk:'💻 Scenario Tecnico — PMI', color:'var(--warn)',
+              txt:'Hai scoperto che il 35% dei valori di temperatura si perde a monte, nella pipeline di ingestione dal sensore — non nel dataset finale. Il manager vuole comunque il modello per domani. Cosa fai?',
+              chs:[
+                {t:'Lascio perdere la causa a monte per ora, e passo un dataset già imputato al team che costruisce il modello.',out:'fast'},
+                {t:'Sistemo il punto di rottura nella pipeline (retry/logging sul sensore) e comunico che il modello di domani lavorerà comunque su dati parzialmente imputati.',out:'rigorous'},
+                {t:'Chiedo quanto è vecchio il problema — se dura da settimane, altri modelli a valle potrebbero già essere compromessi.',out:'context'},
+                {t:'Costruisco da zero un sistema di validazione e alerting sulla qualità dati per l\'intera pipeline, non solo per questo sensore.',out:'overengineer'},
+              ]},
+            outs:{
+              fast:{msg:'Risolvi il sintomo di oggi, ma la pipeline continuerà a perdere dati domani, e dopodomani.',stat:{ENERGY:1,SKILL:-1}},
+              rigorous:{msg:'Risolvi la causa, non solo il sintomo — e sei onesta su cosa resta imperfetto per la scadenza di domani.',stat:{SKILL:2,CLARITY:1}},
+              context:{msg:'Ottima domanda di business.',stat:{SKILL:1,RADAR:2}},
+              overengineer:{msg:'Tecnicamente solida, ma sproporzionata rispetto al tempo e all\'infrastruttura reali di una PMI con una scadenza a domani.',stat:{SKILL:1,ENERGY:-1}},
+            }},
+        },
         db:{
           pat:'Il trade-off velocità/rigore nelle PMI',
           ins:'Nelle PMI la pressione sui tempi è reale. Ma consegnare un modello con dati mal gestiti crea problemi maggiori downstream.',
@@ -1396,6 +1835,92 @@ export const WORLD_DEFS={
             }
           }
         },
+        // Stesso obiettivo (MVP di raccomandazione in 2 giorni, dati sparsi),
+        // raccontato dal punto di vista di ciascun ruolo — vedi §7-8 di
+        // career-world-colloqui-ruoli-spec.md.
+        roleDlg:{
+          scientist:{
+            // Sostanzialmente l'originale — è lo scenario naturale per questo ruolo.
+            dlg:{
+              spk:'💻 Scenario Tecnico — Startup', color:'var(--warn)',
+              txt:'Il founder vuole un MVP del vostro sistema di raccomandazione per dopodomani. Hai dati sparsi, nessuna infrastruttura, e 2 giorni. Cosa proponi?',
+              chs:[
+                {t:'Collaborative filtering con matrix factorization — almeno offline per la demo.',out:'ml'},
+                {t:'Regole euristiche basate sulle categorie più popolari — funziona, è spiegabile e deployabile in 2 ore.',out:'pragmatic'},
+                {t:'Definisco prima i KPI di successo con il founder, poi scelgo l\'approccio.',out:'strategic'},
+                {t:'Propongo un mix: euristiche per il lancio, con in parallelo la raccolta dati per un modello vero nelle settimane successive.',out:'hybrid'},
+              ]},
+            outs:{
+              ml:{msg:'Tecnicamente corretto ma rischioso nei tempi.',stat:{SKILL:1}},
+              pragmatic:{msg:'Scelta eccellente per un MVP.',stat:{SKILL:2,CLARITY:1}},
+              strategic:{msg:'Pensi come una product manager.',stat:{SKILL:1,RADAR:2,CLARITY:2}},
+              hybrid:{msg:'Il meglio di entrambi i mondi, ma richiede più coordinamento di ciascuna strada presa da sola.',stat:{SKILL:2,CLARITY:1}},
+            }},
+          analyst:{
+            dlg:{
+              spk:'💻 Scenario Tecnico — Startup', color:'var(--warn)',
+              txt:'Il founder vuole capire se l\'idea di raccomandazione regge prima di costruire qualunque modello, e ti chiede un\'analisi per dopodomani su dati sparsi, senza infrastruttura. Cosa proponi?',
+              chs:[
+                {t:'Costruisco subito una segmentazione utenti con clustering, anche se con dati così sparsi il risultato sarà fragile.',out:'ml'},
+                {t:'Un report su cosa comprano/guardano insieme gli utenti più attivi — bastano query SQL e qualche pivot, pronto in poche ore.',out:'pragmatic'},
+                {t:'Definisco prima con il founder quali metriche renderebbero l\'idea "validata", poi scelgo cosa analizzare.',out:'strategic'},
+                {t:'Propongo un report descrittivo per il lancio, con in parallelo la raccolta degli eventi che servirebbero per un\'analisi più solida.',out:'hybrid'},
+              ]},
+            outs:{
+              ml:{msg:'L\'analisi è più sofisticata, ma rischiosa sui tempi con dati così sparsi.',stat:{SKILL:1}},
+              pragmatic:{msg:'Scelta eccellente per validare un\'idea in poche ore.',stat:{SKILL:2,CLARITY:1}},
+              strategic:{msg:'Pensi come una product manager.',stat:{SKILL:1,RADAR:2,CLARITY:2}},
+              hybrid:{msg:'Il meglio di entrambi i mondi, ma richiede più coordinamento di ciascuna strada presa da sola.',stat:{SKILL:2,CLARITY:1}},
+            }},
+          ml:{
+            dlg:{
+              spk:'💻 Scenario Tecnico — Startup', color:'var(--warn)',
+              txt:'Il founder vuole il sistema di raccomandazione minimo già in produzione per dopodomani — ma non esiste ancora nessuna infrastruttura di deploy. Cosa proponi?',
+              chs:[
+                {t:'Alleno un modello di collaborative filtering e lo eseguo come script batch schedulato — niente vero serving, ma qualcosa che gira.',out:'ml'},
+                {t:'Servo raccomandazioni con regole euristiche dietro un endpoint minimo — deployabile in 2 ore, senza infrastruttura da mantenere.',out:'pragmatic'},
+                {t:'Definisco prima con il founder quali metriche giustificano l\'investimento in infrastruttura vera, poi scelgo come deployare.',out:'strategic'},
+                {t:'Propongo l\'endpoint euristico per il lancio, con in parallelo la messa in piedi dell\'infrastruttura minima per un modello vero.',out:'hybrid'},
+              ]},
+            outs:{
+              ml:{msg:'Tecnicamente corretto, ma rischioso: uno script batch non è pensato per reggere in produzione.',stat:{SKILL:1}},
+              pragmatic:{msg:'Scelta eccellente per un MVP.',stat:{SKILL:2,CLARITY:1}},
+              strategic:{msg:'Pensi come una product manager.',stat:{SKILL:1,RADAR:2,CLARITY:2}},
+              hybrid:{msg:'Il meglio di entrambi i mondi, ma richiede più coordinamento di ciascuna strada presa da sola.',stat:{SKILL:2,CLARITY:1}},
+            }},
+          ai:{
+            dlg:{
+              spk:'💻 Scenario Tecnico — Startup', color:'var(--warn)',
+              txt:'Il founder vuole un assistente che consigli prodotti agli utenti per dopodomani — non ci sono abbastanza dati storici per un training vero. Cosa proponi?',
+              chs:[
+                {t:'Costruisco un agente che genera raccomandazioni con un LLM a partire dai pochi dati disponibili, anche se rischia di inventare pattern che non esistono.',out:'ml'},
+                {t:'Un prompt che usa le categorie più popolari come contesto esplicito per l\'LLM — spiegabile e pronto in poche ore.',out:'pragmatic'},
+                {t:'Definisco prima con il founder cosa renderebbe l\'assistente utile agli occhi degli utenti, poi scelgo come costruirlo.',out:'strategic'},
+                {t:'Propongo il prompt basato su regole per il lancio, con in parallelo la raccolta dei dati per un agente più capace in futuro.',out:'hybrid'},
+              ]},
+            outs:{
+              ml:{msg:'Tecnicamente ambizioso, ma un LLM senza contesto solido rischia di consigliare con sicurezza cose senza senso.',stat:{SKILL:1}},
+              pragmatic:{msg:'Scelta eccellente per un MVP.',stat:{SKILL:2,CLARITY:1}},
+              strategic:{msg:'Pensi come una product manager.',stat:{SKILL:1,RADAR:2,CLARITY:2}},
+              hybrid:{msg:'Il meglio di entrambi i mondi, ma richiede più coordinamento di ciascuna strada presa da sola.',stat:{SKILL:2,CLARITY:1}},
+            }},
+          dataeng:{
+            dlg:{
+              spk:'💻 Scenario Tecnico — Startup', color:'var(--warn)',
+              txt:'Il founder vuole un sistema di raccomandazione per dopodomani — ma oggi non viene tracciato nessun evento utente utile a costruirlo. Cosa proponi?',
+              chs:[
+                {t:'Costruisco subito una pipeline di tracking completa, anche se richiederà più dei due giorni a disposizione.',out:'ml'},
+                {t:'Aggiungo il tracking minimo sui 2-3 eventi che servono davvero — deployabile in poche ore, il resto dopo.',out:'pragmatic'},
+                {t:'Definisco prima con il founder quali decisioni dipenderanno da questi dati, poi scelgo cosa tracciare.',out:'strategic'},
+                {t:'Propongo il tracking minimo per il lancio, con in parallelo il disegno di una pipeline più completa per dopo.',out:'hybrid'},
+              ]},
+            outs:{
+              ml:{msg:'Tecnicamente solido, ma rischioso: una pipeline completa in due giorni è tempo che la startup non ha.',stat:{SKILL:1}},
+              pragmatic:{msg:'Scelta eccellente per un MVP.',stat:{SKILL:2,CLARITY:1}},
+              strategic:{msg:'Pensi come una product manager.',stat:{SKILL:1,RADAR:2,CLARITY:2}},
+              hybrid:{msg:'Il meglio di entrambi i mondi, ma richiede più coordinamento di ciascuna strada presa da sola.',stat:{SKILL:2,CLARITY:1}},
+            }},
+        },
         db:{
           pat:'Il MVP tecnico: la semplicità come scelta, non come limite',
           ins:'Nelle startup la pressione a dimostrare "ML avanzato" è alta — ma un sistema semplice che funziona batte sempre un sistema complesso che non è pronto.',
@@ -1681,6 +2206,92 @@ export const WORLD_DEFS={
               SKILL:1
             }
           }
+        },
+        // Stesso incidente (churn 28%, 2 settimane, dati transazionali +
+        // intervista), raccontato dal punto di vista di ciascun ruolo — vedi
+        // §7-8 di career-world-colloqui-ruoli-spec.md.
+        roleDlg:{
+          scientist:{
+            // Sostanzialmente l'originale — è lo scenario naturale per questo ruolo.
+            dlg:{
+              spk:'💻 Scenario Tecnico — Consulenza', color:'var(--warn)',
+              txt:'Il cliente ha un churn rate del 28% e vuole capire perché. Hai 2 settimane, accesso a dati transazionali e un\'intervista con il Customer Success team. Da dove inizi?',
+              chs:[
+                {t:'Costruisco subito un modello di churn prediction con XGBoost e SHAP per l\'interpretabilità.',out:'model_first'},
+                {t:'Prima l\'intervista con Customer Success per capire le ipotesi del business, poi EDA, poi il modello — se serve.',out:'business_first'},
+                {t:'Definisco la domanda: churn prediction o churn understanding? Sono due problemi diversi con soluzioni diverse.',out:'frame'},
+                {t:'Comincio dal modello di churn prediction perché è quello che il cliente si aspetta di vedere per primo, e uso l\'intervista per raffinarlo dopo.',out:'client_expect'},
+              ]},
+            outs:{
+              model_first:{msg:'Il modello viene prima delle domande — rischio classico.',stat:{SKILL:1,CLARITY:-1}},
+              business_first:{msg:'Approccio corretto.',stat:{SKILL:2,CLARITY:1}},
+              frame:{msg:'Problem framing prima del solving.',stat:{SKILL:1,RADAR:2,CLARITY:2}},
+              client_expect:{msg:'Parti da ciò che il cliente vuole vedere — ma rischi di dover rifare parte del lavoro se le ipotesi iniziali erano sbagliate.',stat:{SKILL:1}},
+            }},
+          analyst:{
+            dlg:{
+              spk:'💻 Scenario Tecnico — Consulenza', color:'var(--warn)',
+              txt:'Il cliente ha un churn rate del 28% e vuole capirne il motivo. Hai 2 settimane, accesso a dati transazionali e un\'intervista con il Customer Success team. Da dove inizi?',
+              chs:[
+                {t:'Costruisco subito una dashboard di churn segmentata per prodotto/canale, con tutte le metriche standard.',out:'model_first'},
+                {t:'Prima l\'intervista con Customer Success per capire le ipotesi del business, poi l\'EDA, poi la dashboard — se serve.',out:'business_first'},
+                {t:'Definisco la domanda: vogliono capire il churn passato o prevedere quello futuro? Sono due analisi diverse.',out:'frame'},
+                {t:'Comincio dalla dashboard perché è quello che il cliente si aspetta di vedere per primo, e uso l\'intervista per raffinarla dopo.',out:'client_expect'},
+              ]},
+            outs:{
+              model_first:{msg:'La dashboard viene prima delle domande — rischio classico: rischi di raccontare la storia sbagliata.',stat:{SKILL:1,CLARITY:-1}},
+              business_first:{msg:'Approccio corretto.',stat:{SKILL:2,CLARITY:1}},
+              frame:{msg:'Problem framing prima del solving.',stat:{SKILL:1,RADAR:2,CLARITY:2}},
+              client_expect:{msg:'Parti da ciò che il cliente vuole vedere — ma rischi di dover rifare parte del lavoro se le ipotesi iniziali erano sbagliate.',stat:{SKILL:1}},
+            }},
+          ml:{
+            dlg:{
+              spk:'💻 Scenario Tecnico — Consulenza', color:'var(--warn)',
+              txt:'Il modello di churn del progetto ha funzionato bene in fase di analisi. Ora il cliente vuole vederlo girare live nel proprio CRM, con 2 settimane per farlo. Da dove inizi?',
+              chs:[
+                {t:'Comincio subito a scrivere il servizio di scoring in produzione, integrandolo direttamente nel CRM del cliente.',out:'model_first'},
+                {t:'Prima un incontro con il team IT del cliente per capire vincoli e sistemi esistenti, poi disegno l\'integrazione, poi la costruisco.',out:'business_first'},
+                {t:'Definisco la domanda: serve scoring in tempo reale o un batch giornaliero? Sono due architetture diverse.',out:'frame'},
+                {t:'Comincio dall\'integrazione più visibile per il cliente, e sistemo i dettagli tecnici (latenza, retraining) strada facendo.',out:'client_expect'},
+              ]},
+            outs:{
+              model_first:{msg:'Il codice viene prima delle domande sui vincoli del cliente — rischio classico.',stat:{SKILL:1,CLARITY:-1}},
+              business_first:{msg:'Approccio corretto.',stat:{SKILL:2,CLARITY:1}},
+              frame:{msg:'Problem framing prima del solving.',stat:{SKILL:1,RADAR:2,CLARITY:2}},
+              client_expect:{msg:'Parti da ciò che il cliente vuole vedere — ma rischi di dover rifare parte del lavoro se le ipotesi iniziali erano sbagliate.',stat:{SKILL:1}},
+            }},
+          ai:{
+            dlg:{
+              spk:'💻 Scenario Tecnico — Consulenza', color:'var(--warn)',
+              txt:'Il cliente ha un churn rate del 28% e vuole che il suo team di Customer Success possa "chiedere perché" in linguaggio naturale. Hai 2 settimane e accesso ai dati transazionali. Da dove inizi?',
+              chs:[
+                {t:'Costruisco subito un assistente basato su LLM collegato ai dati transazionali grezzi.',out:'model_first'},
+                {t:'Prima l\'intervista con Customer Success per capire le domande reali che si porrebbero, poi disegno l\'assistente su quelle.',out:'business_first'},
+                {t:'Definisco la domanda: l\'assistente deve spiegare il churn passato o aiutare a prevenire quello futuro? Sono due strumenti diversi.',out:'frame'},
+                {t:'Comincio dall\'assistente perché è quello che il cliente si aspetta di vedere per primo, e raffino le domande che sa gestire dopo.',out:'client_expect'},
+              ]},
+            outs:{
+              model_first:{msg:'L\'assistente viene prima delle domande — rischio classico: rischia di rispondere a domande che nessuno farà davvero.',stat:{SKILL:1,CLARITY:-1}},
+              business_first:{msg:'Approccio corretto.',stat:{SKILL:2,CLARITY:1}},
+              frame:{msg:'Problem framing prima del solving.',stat:{SKILL:1,RADAR:2,CLARITY:2}},
+              client_expect:{msg:'Parti da ciò che il cliente vuole vedere — ma rischi di dover rifare parte del lavoro se le ipotesi iniziali erano sbagliate.',stat:{SKILL:1}},
+            }},
+          dataeng:{
+            dlg:{
+              spk:'💻 Scenario Tecnico — Consulenza', color:'var(--warn)',
+              txt:'Il cliente ha un churn rate del 28% ma i dati transazionali vivono in tre sistemi diversi, mai integrati tra loro. Hai 2 settimane e un\'intervista con il Customer Success team. Da dove inizi?',
+              chs:[
+                {t:'Comincio subito a scrivere gli script di join tra i tre sistemi, sistemando i problemi di qualità man mano che emergono.',out:'model_first'},
+                {t:'Prima l\'intervista con Customer Success per capire quali dati contano davvero per l\'analisi, poi mappo le fonti, poi integro.',out:'business_first'},
+                {t:'Definisco la domanda: serve un\'integrazione una tantum per questo progetto o una pipeline che il cliente riuserà? Sono due lavori diversi.',out:'frame'},
+                {t:'Comincio a integrare i dati più visibili per il cliente, e sistemo qualità e copertura strada facendo.',out:'client_expect'},
+              ]},
+            outs:{
+              model_first:{msg:'L\'integrazione viene prima delle domande — rischio classico: rischi di unire dati che raccontano storie diverse.',stat:{SKILL:1,CLARITY:-1}},
+              business_first:{msg:'Approccio corretto.',stat:{SKILL:2,CLARITY:1}},
+              frame:{msg:'Problem framing prima del solving.',stat:{SKILL:1,RADAR:2,CLARITY:2}},
+              client_expect:{msg:'Parti da ciò che il cliente vuole vedere — ma rischi di dover rifare parte del lavoro se le ipotesi iniziali erano sbagliate.',stat:{SKILL:1}},
+            }},
         },
         db:{
           pat:'Problem framing: la skill più sottovalutata nella data science applicata',
@@ -2486,6 +3097,92 @@ export const W3_NPCS = [
         }
       }
     },
+    // Stesso incidente (5 stakeholder, stesso forecast, esigenze diverse),
+    // raccontato dal punto di vista di ciascun ruolo — vedi §7-8 di
+    // career-world-colloqui-ruoli-spec.md.
+    roleDlg:{
+      scientist:{
+        // Sostanzialmente l'originale — è lo scenario naturale per questo ruolo.
+        dlg:{
+          spk:'💻 Scenario Tecnico — Corporate', color:'#f7c46a',
+          txt:'Hai 5 stakeholder che vogliono usare lo stesso modello di forecast per scopi diversi: Finance vuole conservatorismo, Sales vuole ottimismo, Operations vuole precisione, CEO vuole un numero solo. Come gestisci?',
+          chs:[
+            {t:'Costruisco un modello con intervalli di confidenza e creo view diverse per ogni stakeholder — stesso modello, output adattati.',out:'intervals'},
+            {t:'Facilito un workshop con tutti gli stakeholder per allineare prima le metriche di successo, poi costruisco.',out:'align_first'},
+            {t:'Documento per iscritto le assunzioni richieste da ciascuno e le implicazioni tecniche. La decisione finale è del business, non mia.',out:'document'},
+            {t:'Costruisco un solo numero di consenso (una media pesata) invece di più view separate.',out:'average'},
+          ]},
+        outs:{
+          intervals:{msg:'Soluzione tecnica elegante.',stat:{SKILL:2,CLARITY:1}},
+          align_first:{msg:'Problem framing prima del solving.',stat:{SKILL:1,NETWORK:1,RADAR:2}},
+          document:{msg:'Separare responsabilità tecnica da decisione di business è professionalità avanzata.',stat:{SKILL:1,CLARITY:2,VOICE:1}},
+          average:{msg:'Più semplice da comunicare, ma rischia di scontentare tutti allo stesso modo.',stat:{SKILL:1}},
+        }},
+      analyst:{
+        dlg:{
+          spk:'💻 Scenario Tecnico — Corporate', color:'#f7c46a',
+          txt:'Hai 5 stakeholder che vogliono la stessa dashboard di vendite per scopi diversi: Finance vuole conservatorismo, Sales vuole ottimismo, Operations vuole precisione, il CEO vuole un numero solo. Come gestisci?',
+          chs:[
+            {t:'Costruisco un unico modello dati sottostante e creo view diverse per ogni stakeholder — stessa fonte, output adattati.',out:'intervals'},
+            {t:'Facilito un workshop con tutti gli stakeholder per allineare prima le definizioni delle metriche, poi costruisco.',out:'align_first'},
+            {t:'Documento per iscritto le assunzioni richieste da ciascuno e le implicazioni sui numeri. La decisione finale è del business, non mia.',out:'document'},
+            {t:'Costruisco un solo numero di consenso (una media pesata) invece di più view separate.',out:'average'},
+          ]},
+        outs:{
+          intervals:{msg:'Soluzione tecnica elegante.',stat:{SKILL:2,CLARITY:1}},
+          align_first:{msg:'Problem framing prima del solving.',stat:{SKILL:1,NETWORK:1,RADAR:2}},
+          document:{msg:'Separare responsabilità tecnica da decisione di business è professionalità avanzata.',stat:{SKILL:1,CLARITY:2,VOICE:1}},
+          average:{msg:'Più semplice da comunicare, ma rischia di scontentare tutti allo stesso modo.',stat:{SKILL:1}},
+        }},
+      ml:{
+        dlg:{
+          spk:'💻 Scenario Tecnico — Corporate', color:'#f7c46a',
+          txt:'Hai 5 team che vogliono consumare lo stesso modello di forecast con esigenze diverse: Finance vuole batch giornaliero, Sales vuole risposta in tempo reale, Operations vuole massima accuratezza, il CEO vuole un solo endpoint semplice. Come gestisci?',
+          chs:[
+            {t:'Costruisco un solo servizio con più endpoint (batch + real-time) sopra lo stesso modello — stessa logica, SLA diversi.',out:'intervals'},
+            {t:'Facilito un workshop con tutti i team per allineare prima le priorità reali di SLA, poi disegno l\'architettura.',out:'align_first'},
+            {t:'Documento per iscritto i trade-off tecnici di ogni SLA richiesto. La priorità finale la decide il business, non io.',out:'document'},
+            {t:'Costruisco un solo endpoint con un compromesso medio di latenza/accuratezza per tutti.',out:'average'},
+          ]},
+        outs:{
+          intervals:{msg:'Soluzione tecnica elegante.',stat:{SKILL:2,CLARITY:1}},
+          align_first:{msg:'Problem framing prima del solving.',stat:{SKILL:1,NETWORK:1,RADAR:2}},
+          document:{msg:'Separare responsabilità tecnica da decisione di business è professionalità avanzata.',stat:{SKILL:1,CLARITY:2,VOICE:1}},
+          average:{msg:'Più semplice da comunicare, ma rischia di scontentare tutti allo stesso modo.',stat:{SKILL:1}},
+        }},
+      ai:{
+        dlg:{
+          spk:'💻 Scenario Tecnico — Corporate', color:'#f7c46a',
+          txt:'Hai 5 stakeholder che vogliono un assistente AI che spieghi lo stesso forecast a modo loro: Finance vuole cautela, Sales vuole opportunità, Operations vuole precisione, il CEO vuole una frase sola. Come gestisci?',
+          chs:[
+            {t:'Costruisco un solo agente con prompt diversi per stakeholder, tutti ancorati agli stessi numeri sottostanti.',out:'intervals'},
+            {t:'Facilito un workshop con tutti gli stakeholder per allineare prima cosa devono davvero capire dal forecast, poi disegno l\'agente.',out:'align_first'},
+            {t:'Documento per iscritto come l\'agente traduce i numeri per ciascuno stakeholder. La decisione finale resta del business.',out:'document'},
+            {t:'Costruisco un solo messaggio di sintesi generico per tutti gli stakeholder.',out:'average'},
+          ]},
+        outs:{
+          intervals:{msg:'Soluzione tecnica elegante.',stat:{SKILL:2,CLARITY:1}},
+          align_first:{msg:'Problem framing prima del solving.',stat:{SKILL:1,NETWORK:1,RADAR:2}},
+          document:{msg:'Separare responsabilità tecnica da decisione di business è professionalità avanzata.',stat:{SKILL:1,CLARITY:2,VOICE:1}},
+          average:{msg:'Più semplice da comunicare, ma rischia di scontentare tutti allo stesso modo.',stat:{SKILL:1}},
+        }},
+      dataeng:{
+        dlg:{
+          spk:'💻 Scenario Tecnico — Corporate', color:'#f7c46a',
+          txt:'Hai 5 team che vogliono dati di forecast dalla stessa piattaforma con esigenze diverse: Finance vuole numeri stabili, Sales vuole numeri aggiornati, Operations vuole granularità massima, il CEO vuole un\'unica tabella. Come gestisci?',
+          chs:[
+            {t:'Costruisco un\'unica pipeline dati sorgente e derivo tutte le view richieste da lì — stessa fonte, aggregazioni diverse.',out:'intervals'},
+            {t:'Facilito un workshop con tutti i team per allineare prima le definizioni dei dati richiesti, poi disegno la piattaforma.',out:'align_first'},
+            {t:'Documento per iscritto i trade-off di freschezza/stabilità di ogni richiesta. La priorità finale la decide il business.',out:'document'},
+            {t:'Costruisco un\'unica tabella aggregata con un compromesso medio per tutti.',out:'average'},
+          ]},
+        outs:{
+          intervals:{msg:'Soluzione tecnica elegante.',stat:{SKILL:2,CLARITY:1}},
+          align_first:{msg:'Problem framing prima del solving.',stat:{SKILL:1,NETWORK:1,RADAR:2}},
+          document:{msg:'Separare responsabilità tecnica da decisione di business è professionalità avanzata.',stat:{SKILL:1,CLARITY:2,VOICE:1}},
+          average:{msg:'Più semplice da comunicare, ma rischia di scontentare tutti allo stesso modo.',stat:{SKILL:1}},
+        }},
+    },
     db:{
       pat:'Il data scientist come arbitro politico — e come non esserlo',
       ins:'Nelle large corporate il data scientist viene spesso usato per "oggettivare" decisioni già prese.',
@@ -2823,6 +3520,92 @@ export const W4_NPCS = [
         }
       }
     },
+    // Stessa proposta (AI screening CV, 15k€, 6 settimane, no dati storici),
+    // raccontata dal punto di vista di ciascun ruolo — vedi §7-8 di
+    // career-world-colloqui-ruoli-spec.md.
+    roleDlg:{
+      scientist:{
+        // Sostanzialmente l'originale — è lo scenario naturale per questo ruolo.
+        dlg:{
+          spk:'💻 Scenario Tecnico — P.IVA', color:'#f7c46a',
+          txt:'Un cliente ti chiede una proposta per "implementare AI nel loro processo di selezione CV". Budget: 15k€. Timeline: 6 settimane. Non hanno dati storici strutturati. Cosa proponi?',
+          chs:[
+            {t:'Con questi vincoli, propongo un sistema rule-based + NLP leggero per un primo filtro, con revisione umana obbligatoria.',out:'pragmatic'},
+            {t:'Prima di proporre qualsiasi soluzione tecnica, devo capire cosa intendono per "migliorare la selezione".',out:'frame_first'},
+            {t:'Devo essere diretta: l\'AI nella selezione CV senza dati storici e senza audit di bias è un rischio legale e reputazionale per loro.',out:'honest_risk'},
+            {t:'Propongo prima un audit gratuito del loro processo attuale di selezione, per capire dove l\'AI aiuterebbe davvero.',out:'free_audit'},
+          ]},
+        outs:{
+          pragmatic:{msg:'Soluzione onesta e fattibile nei vincoli.',stat:{SKILL:2,CLARITY:1}},
+          frame_first:{msg:'Stai proteggendo il cliente da una soluzione al problema sbagliato.',stat:{SKILL:1,RADAR:2,CLARITY:2}},
+          honest_risk:{msg:'Massima onestà professionale.',stat:{VOICE:2,RADAR:2,NETWORK:1}},
+          free_audit:{msg:'Costruisci credibilità con un investimento — ma è tempo non pagato da bilanciare con gli altri progetti.',stat:{SKILL:1,NETWORK:1}},
+        }},
+      analyst:{
+        dlg:{
+          spk:'💻 Scenario Tecnico — P.IVA', color:'#f7c46a',
+          txt:'Un cliente ti chiede una proposta per "capire cosa non va nel loro processo di selezione CV". Budget: 15k€. Timeline: 6 settimane. Non hanno dati storici strutturati. Cosa proponi?',
+          chs:[
+            {t:'Con questi vincoli, propongo un\'analisi descrittiva dei CV e delle decisioni degli ultimi mesi, con report e raccomandazioni pratiche.',out:'pragmatic'},
+            {t:'Prima di proporre qualsiasi analisi, devo capire cosa intendono per "non va" nel processo.',out:'frame_first'},
+            {t:'Devo essere diretta: senza dati storici strutturati, qualunque numero preciso che gli proponessi ora sarebbe inventato.',out:'honest_risk'},
+            {t:'Propongo prima un audit gratuito del loro processo attuale di selezione, per capire dove un\'analisi aiuterebbe davvero.',out:'free_audit'},
+          ]},
+        outs:{
+          pragmatic:{msg:'Soluzione onesta e fattibile nei vincoli.',stat:{SKILL:2,CLARITY:1}},
+          frame_first:{msg:'Stai proteggendo il cliente da una soluzione al problema sbagliato.',stat:{SKILL:1,RADAR:2,CLARITY:2}},
+          honest_risk:{msg:'Massima onestà professionale.',stat:{VOICE:2,RADAR:2,NETWORK:1}},
+          free_audit:{msg:'Costruisci credibilità con un investimento — ma è tempo non pagato da bilanciare con gli altri progetti.',stat:{SKILL:1,NETWORK:1}},
+        }},
+      ml:{
+        dlg:{
+          spk:'💻 Scenario Tecnico — P.IVA', color:'#f7c46a',
+          txt:'Un cliente che ha già un sistema di screening CV ti chiede una proposta per "mantenerlo affidabile nel tempo". Budget: 15k€. Timeline: 6 settimane. Non hanno mai monitorato il sistema finora. Cosa proponi?',
+          chs:[
+            {t:'Con questi vincoli, propongo un monitoraggio periodico delle performance del sistema, con soglie di allarme e revisione umana obbligatoria.',out:'pragmatic'},
+            {t:'Prima di proporre qualsiasi soluzione di monitoraggio, devo capire cosa intendono per "affidabile" nel loro contesto.',out:'frame_first'},
+            {t:'Devo essere diretta: un sistema mai monitorato in produzione è già un rischio legale e reputazionale per loro, indipendentemente da cosa propongo ora.',out:'honest_risk'},
+            {t:'Propongo prima un audit gratuito delle performance attuali del sistema, per capire dove il monitoraggio serve davvero.',out:'free_audit'},
+          ]},
+        outs:{
+          pragmatic:{msg:'Soluzione onesta e fattibile nei vincoli.',stat:{SKILL:2,CLARITY:1}},
+          frame_first:{msg:'Stai proteggendo il cliente da una soluzione al problema sbagliato.',stat:{SKILL:1,RADAR:2,CLARITY:2}},
+          honest_risk:{msg:'Massima onestà professionale.',stat:{VOICE:2,RADAR:2,NETWORK:1}},
+          free_audit:{msg:'Costruisci credibilità con un investimento — ma è tempo non pagato da bilanciare con gli altri progetti.',stat:{SKILL:1,NETWORK:1}},
+        }},
+      ai:{
+        dlg:{
+          spk:'💻 Scenario Tecnico — P.IVA', color:'#f7c46a',
+          txt:'Un cliente ti chiede una proposta per "un assistente AI che aiuti i recruiter a valutare i CV". Budget: 15k€. Timeline: 6 settimane. Non hanno dati storici strutturati. Cosa proponi?',
+          chs:[
+            {t:'Con questi vincoli, propongo un assistente che segnala punti da verificare nei CV, con audit di bias esplicito e revisione umana obbligatoria.',out:'pragmatic'},
+            {t:'Prima di proporre qualsiasi assistente, devo capire cosa intendono davvero per "aiutare" i recruiter.',out:'frame_first'},
+            {t:'Devo essere diretta: un assistente che valuta CV senza dati storici e senza audit di bias è un rischio legale e reputazionale per loro.',out:'honest_risk'},
+            {t:'Propongo prima un audit gratuito del loro processo attuale di selezione, per capire dove l\'assistente aiuterebbe davvero.',out:'free_audit'},
+          ]},
+        outs:{
+          pragmatic:{msg:'Soluzione onesta e fattibile nei vincoli.',stat:{SKILL:2,CLARITY:1}},
+          frame_first:{msg:'Stai proteggendo il cliente da una soluzione al problema sbagliato.',stat:{SKILL:1,RADAR:2,CLARITY:2}},
+          honest_risk:{msg:'Massima onestà professionale.',stat:{VOICE:2,RADAR:2,NETWORK:1}},
+          free_audit:{msg:'Costruisci credibilità con un investimento — ma è tempo non pagato da bilanciare con gli altri progetti.',stat:{SKILL:1,NETWORK:1}},
+        }},
+      dataeng:{
+        dlg:{
+          spk:'💻 Scenario Tecnico — P.IVA', color:'#f7c46a',
+          txt:'Un cliente ti chiede una proposta per "implementare AI nel loro processo di selezione CV". Budget: 15k€. Timeline: 6 settimane. Non hanno dati storici strutturati. Cosa proponi?',
+          chs:[
+            {t:'Con questi vincoli, propongo prima di strutturare e storicizzare i dati di selezione esistenti, come base per qualunque cosa vogliano fare dopo.',out:'pragmatic'},
+            {t:'Prima di proporre qualsiasi struttura dati, devo capire cosa intendono davvero per "migliorare la selezione".',out:'frame_first'},
+            {t:'Devo essere diretta: senza dati storici strutturati, qualunque modello costruito ora sarebbe un rischio legale e reputazionale per loro.',out:'honest_risk'},
+            {t:'Propongo prima un audit gratuito di quali dati esistono già ma non sono strutturati, per capire da dove partire davvero.',out:'free_audit'},
+          ]},
+        outs:{
+          pragmatic:{msg:'Soluzione onesta e fattibile nei vincoli.',stat:{SKILL:2,CLARITY:1}},
+          frame_first:{msg:'Stai proteggendo il cliente da una soluzione al problema sbagliato.',stat:{SKILL:1,RADAR:2,CLARITY:2}},
+          honest_risk:{msg:'Massima onestà professionale.',stat:{VOICE:2,RADAR:2,NETWORK:1}},
+          free_audit:{msg:'Costruisci credibilità con un investimento — ma è tempo non pagato da bilanciare con gli altri progetti.',stat:{SKILL:1,NETWORK:1}},
+        }},
+    },
     db:{
       pat:'Il bias algoritmico nelle HR tech e la responsabilità del consulente',
       ins:'I sistemi di screening CV addestrati su dati storici tendono a replicare i bias di chi ha assunto in passato.',
@@ -3001,6 +3784,87 @@ export const W5_NPCS = [
       design:    {msg:'"Decision support" con supervisione umana.',stat:{SKILL:2,CLARITY:1,VOICE:1}},
       clinical:  {msg:'I medici definiscono la soglia clinica — tu costruisci il sistema.',stat:{SKILL:1,NETWORK:1,RADAR:2}},
       ethics_board:{msg:'Coinvolgi il presidio istituzionale corretto fin dall\'inizio.',stat:{RADAR:2,CLARITY:1}},
+    },
+    // Stesso scenario (AI diagnosi diabete, dati SSN, framework normativo),
+    // raccontato dal punto di vista di ciascun ruolo — vedi §7-8 di
+    // career-world-colloqui-ruoli-spec.md.
+    roleDlg:{
+      scientist:{
+        // Sostanzialmente l'originale (adattato) — è lo scenario naturale per questo ruolo.
+        dlg:{spk:'💻 Sfida Tecnica — PA/Ricerca',color:'#f7c46a',
+          txt:'Stai sviluppando un sistema AI per supportare i medici di base nella diagnosi precoce del diabete tipo 2, usando dati del SSN. Come gestisci la pipeline dal punto di vista etico, tecnico, e normativo?',
+          chs:[
+            {t:'Inizio dal framework normativo: GDPR articolo 22 (decisioni automatizzate in ambito medico), AI Act categoria ad alto rischio, e consenso informato paziente.',out:'regulatory'},
+            {t:'Il sistema deve essere progettato come "decision support" con supervisione medica obbligatoria — mai come sistema autonomo.',out:'design'},
+            {t:'Coinvolgo medici di base nel design del sistema fin dall\'inizio — i falsi negativi qui sono più pericolosi dei falsi positivi.',out:'clinical'},
+            {t:'Prima di tutto verifico se esiste già un comitato etico che deve approvare il progetto, e lo coinvolgo da subito.',out:'ethics_board'},
+          ]},
+        outs:{
+          regulatory:{msg:'Framework normativo come punto di partenza.',stat:{SKILL:1,RADAR:2,CLARITY:1}},
+          design:    {msg:'"Decision support" con supervisione umana.',stat:{SKILL:2,CLARITY:1,VOICE:1}},
+          clinical:  {msg:'I medici definiscono la soglia clinica — tu costruisci il sistema.',stat:{SKILL:1,NETWORK:1,RADAR:2}},
+          ethics_board:{msg:'Coinvolgi il presidio istituzionale corretto fin dall\'inizio.',stat:{RADAR:2,CLARITY:1}},
+        }},
+      analyst:{
+        dlg:{spk:'💻 Sfida Tecnica — PA/Ricerca',color:'#f7c46a',
+          txt:'Stai costruendo una dashboard epidemiologica per aiutare i medici di base a monitorare il diabete tipo 2 nel loro bacino di pazienti, usando dati del SSN. Come gestisci la pipeline dal punto di vista etico, tecnico e normativo?',
+          chs:[
+            {t:'Inizio dal framework normativo: GDPR e trattamento di dati sanitari, prima di toccare qualunque dato.',out:'regulatory'},
+            {t:'La dashboard deve restare descrittiva — mai suggerire una diagnosi, solo mostrare pattern aggregati ai medici.',out:'design'},
+            {t:'Coinvolgo i medici di base nel design fin dall\'inizio — sono loro a sapere quali pattern sono clinicamente rilevanti.',out:'clinical'},
+            {t:'Prima di tutto verifico se esiste già un comitato etico che deve approvare l\'uso di questi dati, e lo coinvolgo da subito.',out:'ethics_board'},
+          ]},
+        outs:{
+          regulatory:{msg:'Framework normativo come punto di partenza.',stat:{SKILL:1,RADAR:2,CLARITY:1}},
+          design:    {msg:'Restare descrittivi, senza sconfinare nella diagnosi, è una scelta professionale corretta.',stat:{SKILL:2,CLARITY:1,VOICE:1}},
+          clinical:  {msg:'I medici definiscono cosa conta clinicamente — tu costruisci lo strumento.',stat:{SKILL:1,NETWORK:1,RADAR:2}},
+          ethics_board:{msg:'Coinvolgi il presidio istituzionale corretto fin dall\'inizio.',stat:{RADAR:2,CLARITY:1}},
+        }},
+      ml:{
+        dlg:{spk:'💻 Sfida Tecnica — PA/Ricerca',color:'#f7c46a',
+          txt:'Il modello predittivo per la diagnosi precoce del diabete tipo 2 è pronto. Ora va messo in produzione dentro i sistemi informativi del SSN. Come gestisci la pipeline dal punto di vista etico, tecnico e normativo?',
+          chs:[
+            {t:'Inizio dal framework normativo: GDPR articolo 22 e AI Act categoria ad alto rischio, prima di disegnare il deploy.',out:'regulatory'},
+            {t:'Il sistema va messo in produzione come "decision support" con supervisione medica obbligatoria — mai come sistema autonomo.',out:'design'},
+            {t:'Coinvolgo i medici di base nella validazione del sistema in produzione — i falsi negativi qui sono più pericolosi dei falsi positivi.',out:'clinical'},
+            {t:'Prima di tutto verifico se esiste già un comitato etico che deve approvare il deploy, e lo coinvolgo da subito.',out:'ethics_board'},
+          ]},
+        outs:{
+          regulatory:{msg:'Framework normativo come punto di partenza.',stat:{SKILL:1,RADAR:2,CLARITY:1}},
+          design:    {msg:'"Decision support" con supervisione umana.',stat:{SKILL:2,CLARITY:1,VOICE:1}},
+          clinical:  {msg:'I medici definiscono la soglia clinica — tu costruisci il sistema.',stat:{SKILL:1,NETWORK:1,RADAR:2}},
+          ethics_board:{msg:'Coinvolgi il presidio istituzionale corretto fin dall\'inizio.',stat:{RADAR:2,CLARITY:1}},
+        }},
+      ai:{
+        dlg:{spk:'💻 Sfida Tecnica — PA/Ricerca',color:'#f7c46a',
+          txt:'Stai costruendo un assistente AI che aiuti i medici di base a orientarsi sulla diagnosi precoce del diabete tipo 2, usando dati del SSN. Come gestisci la pipeline dal punto di vista etico, tecnico e normativo?',
+          chs:[
+            {t:'Inizio dal framework normativo: GDPR articolo 22 e AI Act categoria ad alto rischio, prima di scrivere qualunque prompt.',out:'regulatory'},
+            {t:'L\'assistente deve dichiarare sempre esplicitamente il livello di incertezza e le fonti — mai una risposta certa senza supervisione medica.',out:'design'},
+            {t:'Coinvolgo i medici di base nel definire cosa l\'assistente può e non può dire — i falsi negativi qui sono più pericolosi dei falsi positivi.',out:'clinical'},
+            {t:'Prima di tutto verifico se esiste già un comitato etico che deve approvare l\'uso dell\'assistente, e lo coinvolgo da subito.',out:'ethics_board'},
+          ]},
+        outs:{
+          regulatory:{msg:'Framework normativo come punto di partenza.',stat:{SKILL:1,RADAR:2,CLARITY:1}},
+          design:    {msg:'Dichiarare incertezza e fonti è "decision support" fatto bene.',stat:{SKILL:2,CLARITY:1,VOICE:1}},
+          clinical:  {msg:'I medici definiscono la soglia clinica — tu costruisci il sistema.',stat:{SKILL:1,NETWORK:1,RADAR:2}},
+          ethics_board:{msg:'Coinvolgi il presidio istituzionale corretto fin dall\'inizio.',stat:{RADAR:2,CLARITY:1}},
+        }},
+      dataeng:{
+        dlg:{spk:'💻 Sfida Tecnica — PA/Ricerca',color:'#f7c46a',
+          txt:'Devi costruire la pipeline dati SSN che alimenterà il sistema di supporto alla diagnosi precoce del diabete tipo 2. Come gestisci la pipeline dal punto di vista etico, tecnico e normativo?',
+          chs:[
+            {t:'Inizio dal framework normativo: GDPR e requisiti di trattamento dati sanitari, prima di disegnare qualunque pipeline.',out:'regulatory'},
+            {t:'La pipeline deve esporre solo dati minimizzati e pseudonimizzati a valle — mai dati identificativi non necessari.',out:'design'},
+            {t:'Coinvolgo i medici di base per capire quali dati sono davvero clinicamente rilevanti, prima di ingerire tutto quello che il SSN ha.',out:'clinical'},
+            {t:'Prima di tutto verifico se esiste già un comitato etico che deve approvare l\'accesso a questi dati, e lo coinvolgo da subito.',out:'ethics_board'},
+          ]},
+        outs:{
+          regulatory:{msg:'Framework normativo come punto di partenza.',stat:{SKILL:1,RADAR:2,CLARITY:1}},
+          design:    {msg:'Minimizzazione dei dati come principio di design è normativa applicata bene.',stat:{SKILL:2,CLARITY:1,VOICE:1}},
+          clinical:  {msg:'I medici definiscono cosa conta clinicamente — tu costruisci la pipeline.',stat:{SKILL:1,NETWORK:1,RADAR:2}},
+          ethics_board:{msg:'Coinvolgi il presidio istituzionale corretto fin dall\'inizio.',stat:{RADAR:2,CLARITY:1}},
+        }},
     },
     db:{pat:'L\'AI in ambito medico: responsabilità, normativa, e supervisione umana',
       ins:'I sistemi AI in ambito medico sono classificati come "alto rischio" nell\'EU AI Act.',
