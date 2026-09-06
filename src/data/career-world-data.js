@@ -796,6 +796,18 @@ export const NETWORK_JOB_CHANGE_BONUS_CAP=15;
 export const INTERNAL_PROMOTION_RAL_CAP=0.10;
 export const EXTERNAL_JOB_CHANGE_RAL_CAP=0.20;
 
+// Gate di negoziazione mostrato dopo un colloquio superato (cambio azienda o
+// promozione interna) quando esiste già una RAL ufficiale precedente da cui
+// negoziare — vedi showRalGate() in game.js. Se negozi e il range RAL del
+// nuovo ruolo si sovrappone a quello del ruolo lasciato, il rilancio è la RAL
+// attuale + una percentuale casuale in questo intervallo; altrimenti la
+// negoziazione fallisce e resta valida la prima offerta.
+export const NEGOTIATION_RAISE_MIN=0.01;
+export const NEGOTIATION_RAISE_MAX=0.05;
+// Punti CLARITY/VOICE guadagnati negoziando, a prescindere dall'esito
+// (successo o fallimento): l'allenamento a negoziare vale di per sé.
+export const NEGOTIATION_STAT_GAIN=4;
+
 // Beat narrativo mostrato prima di spostare davvero la giocatrice in un
 // mondo diverso dopo un cambio di azienda riuscito (vedi showInterview()) —
 // pescato a caso, nessun impatto sui numeri.
