@@ -7,6 +7,7 @@ import {
   INTERVIEW_LUCK_REJECT_MAX, INTERVIEW_LUCK_REJECT_MIN, INTERVIEW_LUCK_MESSAGES,
   INSIDER_RETENTION_RATIO, NETWORK_JOB_CHANGE_BONUS_CAP,
   INTERNAL_PROMOTION_RAL_CAP, EXTERNAL_JOB_CHANGE_RAL_CAP,
+  NEGOTIATION_RAISE_MIN, NEGOTIATION_RAISE_MAX, NEGOTIATION_STAT_GAIN,
   JOB_CHANGE_TRANSITIONS, PMI_ILLEGAL_QUESTION_NOTICE,
 } from '../data/career-world-data.js';
 import { getVisibleNpcs, getUnlockedLevel, isWorldFullyExplored } from './npcVisibility.js';
@@ -1417,22 +1418,17 @@ function enterWorld(worldId){
 //    ora): INSIDER si riduce (non si azzera più), bonus NETWORK
 //    dall'azienda lasciata, cap di crescita RAL più ampio
 //    (EXTERNAL_JOB_CHANGE_RAL_CAP).
-function grantOfficialLevel(worldId,targetLevel,track,opts={}){
+// Calcola l'offerta di RAL per un nuovo livello ufficiale, senza scrivere
+// nulla in ST — usato sia da grantOfficialLevel() per il commit finale sia da
+// showRalGate() per mostrare RAL attuale/proposta PRIMA che il giocatore
+// scelga come rispondere (accetta/negozia/rifiuta). Pura: può essere
+// chiamata più volte per la stessa decisione senza effetti collaterali (il
+// consumo di ST.career.ralModifier resta a carico di grantOfficialLevel()).
+function computeOfficialLevelOffer(worldId,targetLevel,track,opts={}){
   const{free=false}=opts;
-  const wd=WORLD_DEFS[worldId];
-  if(!wd)return;
-  const authed=isAuthenticated();
   const existing=ST.worldsProgress[worldId]
     || (ST.world.id===worldId ? ST.world : null)
     || {visited:[],patterns:[],choices:[],track:null,officialLevel:0,officialRAL:null};
-  // Il colloquio superato dà credito immediato per il contenuto del livello
-  // (non serve rifare a piedi le conversazioni). Il grant gratuito del primo
-  // ingresso NO: deve restare il livello 1 vero, esplorato NPC per NPC —
-  // altrimenti "gratis" salterebbe anche il gameplay, non solo il colloquio.
-  const toGrant=free?[]:wd.npcs.filter(n=>(!n.authOnly||authed)&&(n.level||1)<=targetLevel&&(!n.track||n.track===track));
-  const visited=[...new Set([...existing.visited,...toGrant.map(n=>n.id)])];
-  const finalTrack=track||existing.track||null;
-
   // Chi lascio, se lascio qualcuno: calcolato PRIMA di scrivere qualunque
   // stato, dato che ST.world.id qui è ancora "dove sono ora" (enterWorld(),
   // se serve, viene chiamata solo DOPO da showInterview()).
@@ -1444,22 +1440,45 @@ function grantOfficialLevel(worldId,targetLevel,track,opts={}){
   // di un premio cumulativo illimitato — vedi computeRAL() per il "target"
   // di mercato puro.
   const clsKey=ST.char?.cls||'explorer';
-  // ralModifier: leva di negoziazione accumulata dai dialoghi (ralEffect,
-  // vedi handleChoice()) — si consuma qui e si azzera subito dopo, non dura
-  // oltre la prossima trattativa.
   const targetRAL=computeRAL(worldId,clsKey,targetLevel,ST.career.ralModifier);
-  ST.career.ralModifier=0;
+  const anchorWorldId=prevWorldId||worldId;
+  const anchorLevel=prevWorldId
+    ? (ST.worldsProgress[prevWorldId]?.officialLevel||1)
+    : (existing.officialLevel||1);
   const anchorRAL=prevWorldId
     ? (ST.worldsProgress[prevWorldId]?.officialRAL??null)
     : (existing.officialRAL??null);
-  let newRAL;
+  let offerRAL;
   if(free||anchorRAL==null){
-    newRAL=targetRAL; // nessuna storia salariale pregressa da cui ancorare
+    offerRAL=targetRAL; // nessuna storia salariale pregressa da cui ancorare
   }else{
     const cap=isInternal?INTERNAL_PROMOTION_RAL_CAP:EXTERNAL_JOB_CHANGE_RAL_CAP;
     const capped=Math.round(anchorRAL*(1+cap)/1000)*1000;
-    newRAL=targetRAL>capped?capped:targetRAL; // può anche scendere, se il tasso del nuovo ruolo è più basso
+    offerRAL=targetRAL>capped?capped:targetRAL; // può anche scendere, se il tasso del nuovo ruolo è più basso
   }
+  return{existing,prevWorldId,isInternal,clsKey,targetRAL,anchorWorldId,anchorLevel,anchorRAL,offerRAL};
+}
+
+function grantOfficialLevel(worldId,targetLevel,track,opts={}){
+  const{free=false,overrideRAL=null}=opts;
+  const wd=WORLD_DEFS[worldId];
+  if(!wd)return;
+  const authed=isAuthenticated();
+  const{existing,prevWorldId,isInternal,offerRAL}=computeOfficialLevelOffer(worldId,targetLevel,track,{free});
+  // ralModifier: leva di negoziazione accumulata dai dialoghi (ralEffect,
+  // vedi handleChoice()) — si consuma qui, al commit vero e proprio, e si
+  // azzera subito dopo, non dura oltre la prossima trattativa.
+  ST.career.ralModifier=0;
+  // overrideRAL: usato dal gate RAL (showRalGate()) quando il giocatore ha
+  // accettato/negoziato una cifra diversa dall'offerta calcolata qui.
+  const newRAL=overrideRAL??offerRAL;
+  // Il colloquio superato dà credito immediato per il contenuto del livello
+  // (non serve rifare a piedi le conversazioni). Il grant gratuito del primo
+  // ingresso NO: deve restare il livello 1 vero, esplorato NPC per NPC —
+  // altrimenti "gratis" salterebbe anche il gameplay, non solo il colloquio.
+  const toGrant=free?[]:wd.npcs.filter(n=>(!n.authOnly||authed)&&(n.level||1)<=targetLevel&&(!n.track||n.track===track));
+  const visited=[...new Set([...existing.visited,...toGrant.map(n=>n.id)])];
+  const finalTrack=track||existing.track||null;
 
   const merged={visited,patterns:[...existing.patterns],choices:[...existing.choices],track:finalTrack,
     officialLevel:targetLevel,officialRAL:newRAL,pivaState:existing.pivaState??null};
@@ -1506,6 +1525,99 @@ function showJobChangeTransition(onDone){
     overlay.remove();
     onDone();
   });
+}
+
+// Gate di negoziazione RAL mostrato dopo un colloquio superato con
+// grantOfficialLevel() non ancora chiamato (vedi finish() in showInterview():
+// scatta solo se offer.anchorRAL!=null, cioè quando esiste già una RAL
+// ufficiale da cui negoziare — al primissimo ingresso in assoluto non c'è
+// nulla da accettare/rifiutare/negoziare e il grant resta immediato).
+// Accetta e Negozia commitano sempre (tramite grantOfficialLevel()); solo
+// Rifiuta annulla tutto — niente nuova RAL, niente cambio di mondo/livello.
+function showRalGate({worldId,targetLevel,track,offer,title,wLabel,onResolved,onRefused}){
+  const ralLabel=RAL_LABEL_BY_WORLD[worldId]||'RAL';
+  const fmt=n=>n.toLocaleString('it-IT');
+  const overlay=document.createElement('div');
+  overlay.className='wi-ov';
+  overlay.style.cssText='position:fixed;inset:0;z-index:600;';
+  document.body.appendChild(overlay);
+
+  function commit(finalRAL){
+    grantOfficialLevel(worldId,targetLevel,track,{overrideRAL:finalRAL});
+    overlay.remove();
+    onResolved();
+  }
+  function refuse(){
+    overlay.remove();
+    onRefused();
+  }
+
+  function renderOffer(){
+    overlay.innerHTML=`
+      <div class="wi-box" style="text-align:center">
+        <div class="wi-emoji">💶</div>
+        <div class="wi-title" style="color:#4fc3f7">Offerta per ${title} @ ${wLabel}</div>
+        <div class="wi-what">
+          ${ralLabel} attuale: <strong>${fmt(offer.anchorRAL)} €</strong><br>
+          Nuova proposta: <strong>${fmt(offer.offerRAL)} €</strong>
+        </div>
+        <div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;margin-top:1rem">
+          <button class="btn-next" id="ralRefuse">Rifiuta</button>
+          <button class="btn-next" id="ralNegotiate">Negozia</button>
+          <button class="btn-next" id="ralAccept">Accetta</button>
+        </div>
+      </div>`;
+    document.getElementById('ralRefuse').addEventListener('click',refuse);
+    document.getElementById('ralAccept').addEventListener('click',()=>commit(offer.offerRAL));
+    document.getElementById('ralNegotiate').addEventListener('click',negotiate);
+  }
+
+  function negotiate(){
+    // Punti guadagnati negoziando, a prescindere dall'esito — vedi
+    // NEGOTIATION_STAT_GAIN in career-world-data.js.
+    ST.gs.CLARITY=Math.max(0,Math.min(STAT_MAX.CLARITY,(ST.gs.CLARITY||0)+NEGOTIATION_STAT_GAIN));
+    ST.gs.VOICE=Math.max(0,Math.min(STAT_MAX.VOICE,(ST.gs.VOICE||0)+NEGOTIATION_STAT_GAIN));
+    updHUD();
+
+    const oldTier=RAL_LEVEL_BY_TIER[offer.anchorLevel]||'junior';
+    const newTier=RAL_LEVEL_BY_TIER[targetLevel]||'junior';
+    const oldRange=computeOfferRange(offer.clsKey,oldTier,offer.anchorWorldId);
+    const newRange=computeOfferRange(offer.clsKey,newTier,worldId);
+    const aligned=!!oldRange&&!!newRange&&newRange[0]<=oldRange[1]&&oldRange[0]<=newRange[1];
+
+    if(aligned){
+      const raise=NEGOTIATION_RAISE_MIN+Math.random()*(NEGOTIATION_RAISE_MAX-NEGOTIATION_RAISE_MIN);
+      // Arrotondato alle centinaia (non alle migliaia, come il cap in
+      // grantOfficialLevel()): un rilancio dell'1-5% è troppo piccolo per
+      // sopravvivere a un arrotondamento a 1000 senza sparire.
+      const negotiatedRAL=Math.round(offer.anchorRAL*(1+raise)/100)*100;
+      overlay.innerHTML=`
+        <div class="wi-box" style="text-align:center">
+          <div class="wi-emoji">🤝</div>
+          <div class="wi-title" style="color:#6af7c8">Controproposta accettata</div>
+          <div class="wi-what">Nuova RAL negoziata: <strong>${fmt(negotiatedRAL)} €</strong></div>
+          <div style="display:flex;justify-content:center;margin-top:1rem">
+            <button class="btn-next" id="ralNegotiateConfirm">Continua</button>
+          </div>
+        </div>`;
+      document.getElementById('ralNegotiateConfirm').addEventListener('click',()=>commit(negotiatedRAL));
+    }else{
+      overlay.innerHTML=`
+        <div class="wi-box" style="text-align:center">
+          <div class="wi-emoji">🙅</div>
+          <div class="wi-title" style="color:#f76a6a">Fuori budget</div>
+          <div class="wi-what">Mi dispiace, quello che chiedi non è in budget. Accetti la prima opzione?</div>
+          <div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;margin-top:1rem">
+            <button class="btn-next" id="ralNegotiateRefuse">Rifiuta</button>
+            <button class="btn-next" id="ralNegotiateAccept">Accetta la prima offerta</button>
+          </div>
+        </div>`;
+      document.getElementById('ralNegotiateRefuse').addEventListener('click',refuse);
+      document.getElementById('ralNegotiateAccept').addEventListener('click',()=>commit(offer.offerRAL));
+    }
+  }
+
+  renderOffer();
 }
 
 // Minigioco colloquio: 4 domande a risposta multipla, calibrate sul livello
@@ -1579,18 +1691,25 @@ function showInterview(worldId,targetLevel,track){
     // grantOfficialLevel() — che non tocca ST.world.id. needsEntry copre sia
     // il cambio di azienda sia il primissimo ingresso in assoluto (ST.world.id
     // ancora nullo, vedi enterWorld()), che altrimenti non aprirebbe mai il mondo.
-    let isJobChange=false,needsEntry=false;
+    // ECCEZIONE: se esiste già una RAL ufficiale precedente da cui negoziare
+    // (offer.anchorRAL!=null — cambio azienda o promozione interna, MAI il
+    // primissimo ingresso in assoluto), il grant vero e proprio slitta a dopo
+    // il gate RAL (showRalGate()), che decide la cifra finale in base alla
+    // scelta del giocatore.
+    let isJobChange=false,needsEntry=false,offer=null,gatePending=false;
     if(passed){
       isJobChange=!!ST.world.id&&ST.world.id!==worldId;
       needsEntry=ST.world.id!==worldId;
-      grantOfficialLevel(worldId,targetLevel,track);
+      offer=computeOfficialLevelOffer(worldId,targetLevel,track);
+      gatePending=offer.anchorRAL!=null;
+      if(!gatePending)grantOfficialLevel(worldId,targetLevel,track);
     }
-    const ral=passed?ST.worldsProgress[worldId]?.officialRAL:null;
+    const ral=passed&&!gatePending?ST.worldsProgress[worldId]?.officialRAL:null;
     const ralLabel=RAL_LABEL_BY_WORLD[worldId]||'RAL';
     const headline=passed?'🎉 Colloquio superato':luckRejected?'🎲 Così vicina, eppure no':'😕 Colloquio non superato';
     const color=passed?'#6af7c8':luckRejected?'#ffb74d':'#f76a6a';
     let body=passed
-      ? `Congratulazioni! Sei stata assunta come <strong>${title}</strong> in ${wLabel}. Punteggio: ${score}/${maxScore}.${ral!=null?`<br>💶 ${ralLabel}: <strong>${ral.toLocaleString('it-IT')} €</strong>.`:''}`
+      ? `Congratulazioni! Sei stata assunta come <strong>${title}</strong> in ${wLabel}. Punteggio: ${score}/${maxScore}.${ral!=null?`<br>💶 ${ralLabel}: <strong>${ral.toLocaleString('it-IT')} €</strong>.`:gatePending?`<br>Ora si parla di RAL.`:''}`
       : luckRejected
         ? `Punteggio: ${score}/${maxScore} — sufficiente per il ruolo. ${luckMsg} Non è dipeso dalle tue risposte. Puoi riprovare quando vuoi.`
         : `Punteggio: ${score}/${maxScore}. Non questa volta — ma puoi riprovare quando vuoi.`;
@@ -1604,8 +1723,15 @@ function showInterview(worldId,targetLevel,track){
     document.getElementById('btnInterviewClose').addEventListener('click',()=>{
       overlay.remove();
       if(ST.screen==='game')showTc();
-      if(isJobChange)showJobChangeTransition(()=>enterWorld(worldId));
-      else if(needsEntry)enterWorld(worldId);
+      const proceed=()=>{
+        if(isJobChange)showJobChangeTransition(()=>enterWorld(worldId));
+        else if(needsEntry)enterWorld(worldId);
+      };
+      if(gatePending){
+        showRalGate({worldId,targetLevel,track,offer,title,wLabel,onResolved:proceed,onRefused:()=>{}});
+      }else{
+        proceed();
+      }
     });
   }
 

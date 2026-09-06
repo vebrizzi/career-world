@@ -11,23 +11,38 @@ const DEFAULT_STATE = {
   recalibrated: false,
 };
 
+// Callers fire saveProgress/resetProgress without awaiting them, so two
+// calls can otherwise land on the database out of call order (e.g. a save
+// from just before a reset completing *after* the reset and reviving stale
+// data). Chaining every write onto this promise forces them to hit Supabase
+// in the order they were called, regardless of which network round-trip
+// finishes first.
+let writeChain = Promise.resolve();
+function enqueueWrite(fn) {
+  const result = writeChain.then(fn, fn);
+  writeChain = result.catch(() => {});
+  return result;
+}
+
 // Fire-and-forget: never blocks gameplay on the network round-trip.
 // No-op for guests (no user session).
 export async function saveProgress(ST) {
   const user = getCurrentUser();
   if (!user) return;
-  const { error } = await supabase.from('progress').upsert({
-    user_id: user.id,
-    state: {
-      gs: ST.gs,
-      worldHistory: ST.worldHistory,
-      world: ST.world,
-      worldsProgress: ST.worldsProgress,
-      char: ST.char,
-      recalibrated: ST.recalibrated,
-    },
+  return enqueueWrite(async () => {
+    const { error } = await supabase.from('progress').upsert({
+      user_id: user.id,
+      state: {
+        gs: ST.gs,
+        worldHistory: ST.worldHistory,
+        world: ST.world,
+        worldsProgress: ST.worldsProgress,
+        char: ST.char,
+        recalibrated: ST.recalibrated,
+      },
+    });
+    if (error) console.warn('saveProgress failed', error);
   });
-  if (error) console.warn('saveProgress failed', error);
 }
 
 // Returns the saved state object, or null if the user has no saved row
@@ -52,8 +67,10 @@ export async function loadProgress() {
 export async function resetProgress() {
   const user = getCurrentUser();
   if (!user) return;
-  const { error } = await supabase
-    .from('progress')
-    .upsert({ user_id: user.id, state: DEFAULT_STATE });
-  if (error) console.warn('resetProgress failed', error);
+  return enqueueWrite(async () => {
+    const { error } = await supabase
+      .from('progress')
+      .upsert({ user_id: user.id, state: DEFAULT_STATE });
+    if (error) console.warn('resetProgress failed', error);
+  });
 }
