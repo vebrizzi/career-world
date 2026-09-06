@@ -637,6 +637,274 @@ export const INTERVIEW_QUESTIONS={
 export const INTERVIEW_PASS_RATIO=0.7; // quota del punteggio massimo per superare il colloquio
 
 // ══════════════════════════════════════════════════════════════
+// Versione "corta" delle domande comportamentali generiche (2 invece delle
+// 4 di INTERVIEW_QUESTIONS), diversificate per mondo+livello — usata SOLO
+// al primissimo ingresso in un mondo mai visitato (vedi showInterview() in
+// src/game/game.js: isFirstWorldEntry), per non far affrontare 6 domande a
+// chi sta ancora scoprendo il gioco. Cambio lavoro/promozione restano sul
+// pool INTERVIEW_QUESTIONS completo (4 domande) — sono già "dentro" al
+// gioco, il colloquio più lungo lì non pesa allo stesso modo.
+// Le 2 dimensioni riprese da INTERVIEW_QUESTIONS (le più facili da
+// declinare per contesto): gestione di un compito ambiguo/last-minute
+// (`ambiguity_handling`) e risposta a chi contesta pubblicamente il tuo
+// lavoro con più anzianità/potere di te (`pushback_response`) — stessa
+// scala di 4 opzioni/punteggio 2-1-1-0 di INTERVIEW_QUESTIONS, cambia solo
+// il contesto narrativo. P.IVA resta esclusa (nessun colloquio).
+// ══════════════════════════════════════════════════════════════
+export const INTERVIEW_TRANSVERSAL_QUESTIONS={
+  pmi:{
+    1:[
+      { q:'Il titolare ti chiede di "sistemare i dati" per domani, senza specificare cosa intende — è la sua prima richiesta di questo tipo, e in azienda non c\'è un team dati. Come parti?', dimension:'ambiguity_handling',
+        a:[
+          {t:'Comincio subito con la mia migliore interpretazione, e gli mostro qualcosa appena ho un primo risultato.',score:1},
+          {t:'Gli faccio le 2-3 domande minime per capire cosa intende, poi comincio senza aspettare altro.',score:2},
+          {t:'Gli mando un elenco dettagliato di tutto quello che non è chiaro, prima di iniziare qualsiasi cosa.',score:1},
+          {t:'Aspetto che mi dia indicazioni più precise prima di muovermi.',score:0},
+        ]},
+      { q:'Un collega storico dell\'azienda, senza competenze tecniche ma molto ascoltato dal titolare, mette in dubbio pubblicamente il tuo modo di lavorare sui dati. Cosa fai?', dimension:'pushback_response',
+        a:[
+          {t:'Gli chiedo con calma cosa lo preoccupa nello specifico, e rispondo punto per punto.',score:2},
+          {t:'Difendo subito il mio approccio con gli argomenti che ho, e propongo di approfondire dopo.',score:1},
+          {t:'Ammetto il dubbio davanti a tutti e propongo di rimandare la discussione a quando avrò controllato meglio.',score:1},
+          {t:'Lascio perdere e ne parlo semmai in privato col titolare.',score:0},
+        ]},
+    ],
+    2:[
+      { q:'Ti assegnano un problema che nessuno in azienda sa inquadrare bene — non è chiaro se sia un problema di dati, di IT o di processo — e le conseguenze di sbagliare diagnosi ricadono su tutto il reparto produzione. Come parti?', dimension:'ambiguity_handling',
+        a:[
+          {t:'Chiarisco impatto e confini del problema con chi me l\'ha segnalato, poi comunico a tutti come lo affronterò.',score:2},
+          {t:'Comincio dalla parte che conosco meglio, e coinvolgo altri se scopro che il problema è altrove.',score:1},
+          {t:'Chiedo a chi è più senior di me di inquadrare il problema, per non rischiare di sbagliare da sola.',score:1},
+          {t:'Provo ad affrontare tutte le ipotesi in parallelo.',score:0},
+        ]},
+      { q:'Il titolare, senza competenze tecniche, contraddice pubblicamente una tua decisione basandosi solo sul "buon senso" — e la decisione riguarda anche il lavoro di altri due colleghi. Come rispondi?', dimension:'pushback_response',
+        a:[
+          {t:'Traduco la decisione in impatto concreto per l\'azienda, poi cerco un terreno comune con lui.',score:2},
+          {t:'Insisto sulla scelta tecnicamente corretta, spiegandola più volte finché non la capisce.',score:1},
+          {t:'Accetto la sua versione davanti a tutti, e gestisco privatamente le conseguenze con i colleghi coinvolti.',score:1},
+          {t:'Faccio come dice lui — è il titolare, non vale la pena discutere.',score:0},
+        ]},
+    ],
+    3:[
+      { q:'Un collega junior ti chiede aiuto su un compito che il titolare gli ha assegnato in modo vago, e tu stessa non hai tutti i dettagli. Come lo guidi?', dimension:'ambiguity_handling',
+        a:[
+          {t:'Lo aiuto a individuare le 2-3 domande giuste da fare al titolare, invece di rispondere io al posto suo.',score:2},
+          {t:'Gli do la mia migliore interpretazione, così può almeno iniziare a lavorare.',score:1},
+          {t:'Vado io stessa dal titolare a chiedere chiarimenti al posto suo.',score:1},
+          {t:'Gli dico di aspettare istruzioni più precise, come farei io.',score:0},
+        ]},
+      { q:'Il titolare vuole introdurre uno strumento che tecnicamente non ha senso per come lavora l\'azienda, e tu non hai l\'autorità per bloccare la decisione. Come intervieni?', dimension:'pushback_response',
+        a:[
+          {t:'Gli porto un\'alternativa concreta con pro/contro chiari, invece di limitarmi a dire che ha torto.',score:2},
+          {t:'Eseguo la decisione, ma documento per iscritto i rischi che vedo.',score:1},
+          {t:'Provo a convincere prima i colleghi, sperando che la pressione collettiva lo faccia cambiare idea.',score:1},
+          {t:'Lascio che decida lui, tanto è la sua azienda.',score:0},
+        ]},
+    ],
+  },
+  startup:{
+    1:[
+      { q:'Il founder ti manda un messaggio la sera prima: "domani serve una soluzione per X", senza altri dettagli, e sparisce. Come parti?', dimension:'ambiguity_handling',
+        a:[
+          {t:'Comincio con la mia migliore interpretazione, e gli mostro qualcosa appena si ricollega.',score:1},
+          {t:'Gli scrivo 2-3 domande mirate e comincio nel frattempo sulla parte che non dipende dalla risposta.',score:2},
+          {t:'Chiedo a un collega di decidere al posto mio, per non sbagliare direzione.',score:1},
+          {t:'Aspetto che risponda prima di iniziare qualsiasi cosa.',score:0},
+        ]},
+      { q:'Un collega con più esperienza di startup, ma zero competenza tecnica, boccia la tua proposta davanti a tutto il team con un "non funzionerà mai". Cosa fai?', dimension:'pushback_response',
+        a:[
+          {t:'Gli chiedo cosa lo preoccupa nello specifico, e rispondo con dati o esempi concreti.',score:2},
+          {t:'Difendo subito la proposta con gli argomenti che ho a disposizione.',score:1},
+          {t:'Propongo di testarla in piccolo, così i dati decidono al posto della discussione.',score:1},
+          {t:'Lascio cadere la proposta — se la pensa così lui, forse ha ragione.',score:0},
+        ]},
+    ],
+    2:[
+      { q:'Ti trovi a dover risolvere un problema che tocca due funzioni diverse (prodotto e vendite) e nessuno ti ha detto chiaramente chi decide cosa. Il team conta sul tuo output per andare avanti. Come parti?', dimension:'ambiguity_handling',
+        a:[
+          {t:'Chiarisco con le due parti coinvolte chi decide cosa, poi comunico il piano a tutto il team.',score:2},
+          {t:'Comincio dalla parte più urgente, e coordino il resto strada facendo.',score:1},
+          {t:'Chiedo al founder di decidere lui i confini, per non rischiare di scontentare nessuno.',score:1},
+          {t:'Provo ad accontentare entrambe le funzioni contemporaneamente.',score:0},
+        ]},
+      { q:'Un collega più navigato di te, ma su un altro dominio, boccia pubblicamente una tua decisione che riguarda anche il lavoro di altre due persone del team. Come rispondi?', dimension:'pushback_response',
+        a:[
+          {t:'Spiego il ragionamento dietro la decisione e l\'impatto su chi la userà, poi resto aperta a modificarla con argomenti nuovi.',score:2},
+          {t:'Insisto sulla decisione presa, spiegandola più volte finché non la accetta.',score:1},
+          {t:'La cambio subito davanti a tutti, per evitare che la discussione continui.',score:1},
+          {t:'Non rispondo lì per lì, e ne parlo solo in privato dopo.',score:0},
+        ]},
+    ],
+    3:[
+      { q:'Una persona junior del team ti chiede come muoversi su un progetto i cui confini cambiano ogni settimana, e tu stessa non hai tutte le risposte. Come la guidi?', dimension:'ambiguity_handling',
+        a:[
+          {t:'La aiuto a definire cosa NON dipende dal cambiamento e può partire comunque, invece di aspettare chiarezza totale.',score:2},
+          {t:'Le do la mia migliore interpretazione di dove sta andando il progetto.',score:1},
+          {t:'La mando dal founder a chiedere chiarimenti al posto mio.',score:1},
+          {t:'Le dico di aspettare che le cose si stabilizzino prima di procedere.',score:0},
+        ]},
+      { q:'Il founder vuole spingere avanti una feature che tecnicamente rischia di rompere il prodotto, e tu non hai l\'autorità per fermarlo. Come intervieni?', dimension:'pushback_response',
+        a:[
+          {t:'Gli porto uno scenario concreto di cosa può rompersi e un\'alternativa più sicura per arrivare allo stesso obiettivo.',score:2},
+          {t:'Procedo comunque, ma documento per iscritto i rischi tecnici che vedo.',score:1},
+          {t:'Cerco di convincere prima il resto del team, sperando che la pressione collettiva lo fermi.',score:1},
+          {t:'Lo lascio decidere — è il founder, la responsabilità è sua.',score:0},
+        ]},
+    ],
+  },
+  consulenza:{
+    1:[
+      { q:'Un partner ti gira un\'email del cliente con scritto solo "vediamo cosa possiamo fare", senza brief né scadenza chiara, e ti chiede una prima proposta per domani. Come parti?', dimension:'ambiguity_handling',
+        a:[
+          {t:'Comincio con la mia migliore interpretazione e la mostro come bozza di partenza, non come proposta finale.',score:1},
+          {t:'Faccio le 2-3 domande minime al partner per capire cosa il cliente si aspetta davvero, poi comincio.',score:2},
+          {t:'Mando un elenco di tutto quello che manca prima di iniziare qualsiasi lavoro.',score:1},
+          {t:'Aspetto che il partner mi dia indicazioni più precise.',score:0},
+        ]},
+      { q:'Un collega più senior di te, che non ha seguito il progetto da vicino, corregge pubblicamente la tua analisi davanti al cliente. Cosa fai?', dimension:'pushback_response',
+        a:[
+          {t:'Chiedo con calma quali dati lo portano a quella conclusione, e rispondo con i miei.',score:2},
+          {t:'Difendo subito la mia analisi con gli argomenti che ho pronti.',score:1},
+          {t:'Mi allineo pubblicamente a lui, e ne riparlo con lui in privato dopo.',score:1},
+          {t:'Lascio cadere la mia analisi davanti al cliente.',score:0},
+        ]},
+    ],
+    2:[
+      { q:'Il cliente ti assegna un problema a cavallo tra due workstream diversi del progetto, di cui si occupano due colleghi diversi da te, e vuole una risposta unica. Come parti?', dimension:'ambiguity_handling',
+        a:[
+          {t:'Chiarisco con i due colleghi chi copre cosa, poi presento al cliente una risposta coordinata.',score:2},
+          {t:'Rispondo io per la parte che conosco meglio, e giro il resto ai colleghi competenti.',score:1},
+          {t:'Chiedo al partner di assegnare chiaramente le responsabilità, per non sovrappormi a nessuno.',score:1},
+          {t:'Provo a coprire tutto da sola per dare una risposta rapida al cliente.',score:0},
+        ]},
+      { q:'Un collega più senior di te, ma su un altro progetto, mette in dubbio pubblicamente una tua raccomandazione al cliente — raccomandazione che altri due colleghi stanno già eseguendo. Come rispondi?', dimension:'pushback_response',
+        a:[
+          {t:'Spiego il ragionamento e l\'impatto sul lavoro già in corso, restando aperta a integrare la sua osservazione.',score:2},
+          {t:'Insisto sulla raccomandazione, ripetendola con parole diverse finché non la accetta.',score:1},
+          {t:'La ritiro subito davanti al cliente, per evitare di sembrare in disaccordo tra colleghi.',score:1},
+          {t:'Non rispondo davanti al cliente, e chiarisco solo in privato dopo.',score:0},
+        ]},
+    ],
+    3:[
+      { q:'Un consulente junior ti chiede come rispondere a una richiesta del cliente che nemmeno tu sai inquadrare del tutto. Come lo guidi?', dimension:'ambiguity_handling',
+        a:[
+          {t:'Lo aiuto a formulare le domande giuste da fare al cliente, invece di rispondere io al posto suo.',score:2},
+          {t:'Gli do la mia migliore interpretazione, così può muoversi subito.',score:1},
+          {t:'Rispondo io direttamente al cliente, per sicurezza.',score:1},
+          {t:'Gli dico di aspettare indicazioni più precise dal partner.',score:0},
+        ]},
+      { q:'Un partner vuole promettere al cliente una tempistica che sai essere tecnicamente irrealistica, e non hai l\'autorità per opporti alla sua decisione commerciale. Come intervieni?', dimension:'pushback_response',
+        a:[
+          {t:'Gli porto uno scenario tecnico concreto e un\'alternativa di tempistica realistica da proporre insieme al cliente.',score:2},
+          {t:'Accetto la promessa, ma documento per iscritto i rischi che vedo.',score:1},
+          {t:'Cerco di convincere prima altri colleghi senior, sperando che la pressione collettiva lo faccia riconsiderare.',score:1},
+          {t:'Lo lascio decidere — è una scelta commerciale, non tecnica.',score:0},
+        ]},
+    ],
+  },
+  corporate:{
+    1:[
+      { q:'Il tuo manager ti gira un compito con scritto solo "serve entro venerdì, i dettagli li trovi nel thread" — ma il thread è lungo e contraddittorio. Come parti?', dimension:'ambiguity_handling',
+        a:[
+          {t:'Comincio con la mia migliore interpretazione del thread, e la verifico con il manager appena ho qualcosa.',score:1},
+          {t:'Faccio 2-3 domande mirate al manager per sciogliere le contraddizioni, poi comincio.',score:2},
+          {t:'Rileggo tutto il thread più volte prima di scrivere qualsiasi domanda.',score:1},
+          {t:'Aspetto che qualcuno riassuma il thread al posto mio.',score:0},
+        ]},
+      { q:'In una riunione, un collega più senior di te corregge pubblicamente il tuo lavoro basandosi su informazioni non aggiornate. Cosa fai?', dimension:'pushback_response',
+        a:[
+          {t:'Chiedo con calma a quali informazioni si riferisce, e mostro le mie senza sminuire le sue.',score:2},
+          {t:'Lo contraddico subito con i dati aggiornati che ho.',score:1},
+          {t:'Lascio correre in riunione e lo correggo in privato dopo.',score:1},
+          {t:'Mi scuso e lascio cadere il punto, anche se ho ragione.',score:0},
+        ]},
+    ],
+    2:[
+      { q:'Ricevi una richiesta che coinvolge due reparti diversi dal tuo, senza che nessuno ti abbia detto chi ha l\'ultima parola sulle scelte. Il tuo output blocca entrambi. Come parti?', dimension:'ambiguity_handling',
+        a:[
+          {t:'Chiarisco con i referenti di entrambi i reparti chi decide cosa, poi comunico il piano a tutti.',score:2},
+          {t:'Comincio dalla parte che conosco meglio, e coordino il resto in corsa.',score:1},
+          {t:'Chiedo al mio manager di stabilire lui i confini di responsabilità.',score:1},
+          {t:'Provo ad accontentare entrambi i reparti in parallelo.',score:0},
+        ]},
+      { q:'Un collega più senior di te, di un altro team, mette in dubbio pubblicamente una tua decisione che ha già impattato il lavoro di due colleghi. Come rispondi?', dimension:'pushback_response',
+        a:[
+          {t:'Spiego il ragionamento e l\'impatto già prodotto, restando aperta a rivedere la decisione con argomenti nuovi.',score:2},
+          {t:'Difendo la decisione ripetendo gli stessi argomenti finché non la accetta.',score:1},
+          {t:'La cambio subito in riunione per chiudere la discussione.',score:1},
+          {t:'Evito di rispondere lì, e chiarisco solo in privato dopo.',score:0},
+        ]},
+    ],
+    3:[
+      { q:'Una persona del tuo team ti chiede come muoversi su una richiesta arrivata dall\'alto in modo vago e contraddittorio, e nemmeno tu hai tutte le risposte. Come la guidi?', dimension:'ambiguity_handling',
+        a:[
+          {t:'La aiuto a isolare cosa è certo e può partire subito, mentre insieme chiariamo il resto con chi ha fatto la richiesta.',score:2},
+          {t:'Le do la mia migliore interpretazione, così può iniziare.',score:1},
+          {t:'Vado io a chiedere chiarimenti al posto suo.',score:1},
+          {t:'Le dico di aspettare che la richiesta venga chiarita dall\'alto.',score:0},
+        ]},
+      { q:'Un dirigente vuole imporre una scelta tecnica che sai essere sbagliata su scala aziendale, e non hai l\'autorità formale per bloccarla. Come intervieni?', dimension:'pushback_response',
+        a:[
+          {t:'Gli porto dati concreti sui rischi e un\'alternativa percorribile, invece di limitarmi a esprimere disaccordo.',score:2},
+          {t:'Eseguo la decisione, ma la documento per iscritto insieme ai rischi che vedo.',score:1},
+          {t:'Cerco di costruire consenso tra pari prima, sperando che la pressione collettiva lo fermi.',score:1},
+          {t:'Lo lascio decidere — ha l\'autorità, non la mia.',score:0},
+        ]},
+    ],
+  },
+  pa:{
+    1:[
+      { q:'Il tuo responsabile ti assegna un\'analisi "urgente" senza specificare per chi è né in che formato serve, e sparisce in una riunione. Come parti?', dimension:'ambiguity_handling',
+        a:[
+          {t:'Comincio con la mia migliore interpretazione, e la verifico con lui appena possibile.',score:1},
+          {t:'Faccio le 2-3 domande minime necessarie appena possibile, poi comincio senza aspettare oltre.',score:2},
+          {t:'Preparo un elenco scritto di tutto quello che manca prima di iniziare.',score:1},
+          {t:'Aspetto che torni dalla riunione per avere indicazioni precise.',score:0},
+        ]},
+      { q:'Un collega con più anzianità di te, ma senza competenze metodologiche specifiche, contesta pubblicamente il tuo metodo in una riunione di gruppo. Cosa fai?', dimension:'pushback_response',
+        a:[
+          {t:'Gli chiedo con calma cosa lo preoccupa, e rispondo spiegando le assunzioni del metodo.',score:2},
+          {t:'Difendo subito il metodo con gli argomenti che ho pronti.',score:1},
+          {t:'Ammetto il dubbio pubblicamente e propongo di riparlarne dopo aver verificato.',score:1},
+          {t:'Lascio cadere il punto per evitare frizioni con un collega più anziano.',score:0},
+        ]},
+    ],
+    2:[
+      { q:'Ricevi un incarico che coinvolge sia il tuo ufficio sia un altro ente, senza che sia chiaro chi debba decidere cosa, e la scadenza è vicina. Come parti?', dimension:'ambiguity_handling',
+        a:[
+          {t:'Chiarisco con i referenti di entrambi gli uffici chi decide cosa, poi propongo un piano condiviso.',score:2},
+          {t:'Comincio dalla parte di mia competenza, e coordino il resto strada facendo.',score:1},
+          {t:'Chiedo al mio responsabile di stabilire lui i confini tra i due uffici.',score:1},
+          {t:'Provo a occuparmi di tutto da sola per rispettare la scadenza.',score:0},
+        ]},
+      { q:'Un collega con più anzianità, ma di un altro ufficio, contesta pubblicamente una tua valutazione che ha già impattato il lavoro di altri due colleghi. Come rispondi?', dimension:'pushback_response',
+        a:[
+          {t:'Spiego la metodologia e l\'impatto già prodotto, restando aperta a rivedere la valutazione con elementi nuovi.',score:2},
+          {t:'Difendo la valutazione ripetendo gli stessi argomenti finché non la accetta.',score:1},
+          {t:'La ritiro subito in riunione per evitare la discussione.',score:1},
+          {t:'Non rispondo lì, e chiarisco solo in privato dopo.',score:0},
+        ]},
+    ],
+    3:[
+      { q:'Una collega più giovane ti chiede come muoversi su un incarico arrivato in modo vago dalla dirigenza, e nemmeno tu hai tutte le risposte. Come la guidi?', dimension:'ambiguity_handling',
+        a:[
+          {t:'La aiuto a isolare cosa è già chiaro e può partire, mentre insieme chiediamo chiarimenti sul resto.',score:2},
+          {t:'Le do la mia migliore interpretazione, così può cominciare.',score:1},
+          {t:'Chiedo io i chiarimenti alla dirigenza al posto suo.',score:1},
+          {t:'Le dico di aspettare indicazioni più precise dall\'alto.',score:0},
+        ]},
+      { q:'Un dirigente vuole imporre una scelta metodologica che sai essere scorretta su scala di ente, e non hai l\'autorità formale per opporti. Come intervieni?', dimension:'pushback_response',
+        a:[
+          {t:'Gli porto evidenze concrete dei rischi metodologici e un\'alternativa percorribile.',score:2},
+          {t:'Eseguo la decisione, ma la documento per iscritto insieme ai rischi che vedo.',score:1},
+          {t:'Cerco di costruire consenso tra colleghi prima, sperando che la pressione collettiva lo fermi.',score:1},
+          {t:'Lo lascio decidere — ha l\'autorità, non la mia.',score:0},
+        ]},
+    ],
+  },
+};
+
+// ══════════════════════════════════════════════════════════════
 // Domande extra per mondo+livello, aggiunte in coda al pool generico
 // (vedi showInterview() in src/game/game.js) — 2 per mondo/livello: slot1
 // è la domanda originale (per PMI: la domanda illegale, `legal:false`,
