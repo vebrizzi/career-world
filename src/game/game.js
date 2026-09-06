@@ -3,7 +3,7 @@ import {
   UI_TEXTS, STEPS, SMAP, CLASSES, WORLD_DEFS, INNER_CRITICS, WORLD_INTROS, WORLD_DEBRIEF, WORLD_CAREER_LEVELS,
   RAL_BASE, AREA_MULTIPLIER, RAL_LEVEL_BY_TIER, computeOfferRange, RAL_LABEL_BY_WORLD, WORLD_COMPANY_SIZE,
   computeReadiness, tierFromReadiness, createPivaState, applyRevenueEffect,
-  INTERVIEW_QUESTIONS, INTERVIEW_PASS_RATIO, INTERVIEW_WORLD_QUESTIONS,
+  INTERVIEW_QUESTIONS, INTERVIEW_PASS_RATIO, INTERVIEW_WORLD_QUESTIONS, INTERVIEW_TRANSVERSAL_QUESTIONS,
   INTERVIEW_LUCK_REJECT_MAX, INTERVIEW_LUCK_REJECT_MIN, INTERVIEW_LUCK_MESSAGES,
   INSIDER_RETENTION_RATIO, NETWORK_JOB_CHANGE_BONUS_CAP,
   INTERNAL_PROMOTION_RAL_CAP, EXTERNAL_JOB_CHANGE_RAL_CAP,
@@ -1669,7 +1669,18 @@ function showRalGate({worldId,targetLevel,track,offer,title,wLabel,onResolved,on
 // dentro un mondo.
 function showInterview(worldId,targetLevel,track){
   hideTc();
-  const base=INTERVIEW_QUESTIONS[targetLevel]||INTERVIEW_QUESTIONS[1];
+  // Colloquio più corto (4 domande invece di 6) al primissimo ingresso in
+  // questo mondo — chi sta ancora scoprendo il gioco non deve affrontare il
+  // pool comportamentale generico completo. "Primissimo ingresso" = non hai
+  // mai tenuto un livello ufficiale in worldId, né ora né in passato (stessa
+  // definizione di "nessuna RAL da cui ancorare" in computeOfficialLevelOffer()).
+  // Cambio lavoro/promozione (quindi con già un ancoraggio) restano sul pool
+  // completo — vedi INTERVIEW_TRANSVERSAL_QUESTIONS in career-world-data.js.
+  const priorProgress=ST.worldsProgress[worldId]||(ST.world.id===worldId?ST.world:null);
+  const isFirstWorldEntry=!priorProgress||!priorProgress.officialLevel;
+  const base=isFirstWorldEntry
+    ? (INTERVIEW_TRANSVERSAL_QUESTIONS[worldId]?.[targetLevel]||INTERVIEW_QUESTIONS[targetLevel]||INTERVIEW_QUESTIONS[1])
+    : (INTERVIEW_QUESTIONS[targetLevel]||INTERVIEW_QUESTIONS[1]);
   // Ogni mondo/livello ha 2 domande di mondo (vedi INTERVIEW_WORLD_QUESTIONS
   // in career-world-data.js). Big Corporate e Consulenza differenziano lo
   // slot2 per ruolo (byRole): resolveWorldQuestion() lo appiattisce in una
