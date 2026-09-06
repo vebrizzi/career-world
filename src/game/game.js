@@ -685,10 +685,10 @@ function gPreload(){
   // pezzi che hanno un equivalente nel set; furn_factory e furn_globe
   // restano disegnati a mano, non coperti dal set (macchinario industriale
   // e globo su treppiede).
-  ['furn_plant','furn_sofa','furn_shelf','furn_office_plant','furn_cabinet','furn_whiteboard','furn_divider']
+  ['furn_plant','furn_sofa','furn_shelf','furn_office_plant','furn_cabinet','furn_whiteboard']
     .forEach(key=>{if(!this.textures.exists(key))this.load.image(key,`/furniture/${key}.png`);});
-  // Porta d'ufficio a vetri (stesso set PixelOffice di furn_divider) — un solo
-  // artwork per porta bloccata/sbloccata, distinte con un tint (vedi doEx/gCreate).
+  // Porta d'ufficio a vetri (stesso set PixelOffice degli altri arredi) — un
+  // solo artwork per porta bloccata/sbloccata, distinte con un tint (vedi doEx/gCreate).
   if(!this.textures.exists('door_img'))this.load.image('door_img','/furniture/door_pixeloffice.png');
   const g=this.make.graphics({add:false});
   const pal=currentWorldDef.palette;
@@ -972,6 +972,21 @@ function gCreate(){
         // il pavimento e sotto i personaggi.
       }
     };
+    // Helper: piazza arredo SOLIDO — stesso posizionamento di furn(), ma
+    // aggiunge anche un corpo fisico invisibile a wallGroup (stesso schema
+    // usato per 'obstacle' più sopra), così il player non ci passa
+    // attraverso. Usato per i divisori in mezzo alla stanza: prima erano
+    // furn_divider puramente decorativi — sembravano una parete ma non lo
+    // erano. Registra anche la cella in usedSlots così un NPC di livello
+    // superiore non venga più spawnato sopra un blocco ora impassabile.
+    const furnBlock=(col,row,key,sx=1,sy=1)=>{
+      if(col>0&&col<cols-1&&row>0&&row<rows-1&&!usedSlots.has(`${col},${row}`)){
+        const fi=scn.add.image(col*T2+T2/2,row*T2+T2/2,key);
+        fi.setDisplaySize(T2*sx,T2*sy);
+        wallGroup.create(col*T2+T2/2,row*T2+T2/2,key).setVisible(false).refreshBody();
+        usedSlots.add(`${col},${row}`);
+      }
+    };
     if(_bg==='factory'){
       // PMI: macchinari industriali agli angoli e lungo i muri
       furn('furn_factory',2,3,'furn_factory');
@@ -979,9 +994,11 @@ function gCreate(){
       furn('furn_factory',cols-3,rows-3,'furn_factory');
       furn('furn_factory',2,rows-2,'furn_factory');
       furn('furn_factory',Math.floor(cols/2),2,'furn_factory');
-      furn('furn_divider',16,3,'furn_divider',0.75,1.1);
-      furn('furn_divider',16,6,'furn_divider',0.75,1.1);
-      furn('furn_divider',16,9,'furn_divider',0.75,1.1);
+      // Fila di macchinari lungo la colonna centrale, al posto del vecchio
+      // furn_divider decorativo — vedi furnBlock() più sopra.
+      furnBlock(16,3,'furn_factory');
+      furnBlock(16,6,'furn_factory');
+      furnBlock(16,9,'furn_factory');
     } else if(_bg==='startup'){
       // Startup: divani, piante, energia
       furn('furn_sofa',2,rows-3,'furn_sofa',2,1);
@@ -989,49 +1006,61 @@ function gCreate(){
       furn('furn_plant',2,rows-2,'furn_plant');
       furn('furn_plant',cols-2,rows-2,'furn_plant');
       furn('furn_plant',Math.floor(cols/2),rows-2,'furn_plant');
-      furn('furn_divider',16,3,'furn_divider',0.75,1.1);
-      furn('furn_divider',16,6,'furn_divider',0.75,1.1);
-      furn('furn_divider',16,9,'furn_divider',0.75,1.1);
+      // Fila di piante lungo la colonna centrale, al posto del vecchio
+      // furn_divider decorativo — vedi furnBlock() più sopra.
+      furnBlock(16,3,'furn_plant');
+      furnBlock(16,6,'furn_plant');
+      furnBlock(16,9,'furn_plant');
     } else if(_bg==='office'){
-      // Consulenza: scaffali libri, piante formali, parete vetrata a
-      // dividere la sala riunioni dall'open space (vedi furn_divider)
+      // Consulenza: scaffali libri, piante formali, e una fila di scaffali
+      // a dividere la sala riunioni dall'open space (vedi furnBlock())
       furn('furn_shelf',2,2,'furn_shelf');
       furn('furn_shelf',cols-2,2,'furn_shelf');
       furn('furn_shelf',2,Math.floor(rows/2),'furn_shelf');
       furn('furn_office_plant',cols-2,rows-3,'furn_office_plant');
       furn('furn_office_plant',cols-2,rows-2,'furn_office_plant');
-      furn('furn_divider',16,3,'furn_divider',0.75,1.1);
-      furn('furn_divider',16,6,'furn_divider',0.75,1.1);
-      furn('furn_divider',16,9,'furn_divider',0.75,1.1);
+      // Fila di scaffali lungo la colonna centrale, a dividere la sala
+      // riunioni dall'open space — al posto del vecchio furn_divider
+      // decorativo (vedi furnBlock() più sopra).
+      furnBlock(16,3,'furn_shelf');
+      furnBlock(16,6,'furn_shelf');
+      furnBlock(16,9,'furn_shelf');
     } else if(_bg==='corporate'){
-      // Large Corporate: armadi archivio, piante d'ufficio e pareti
-      // vetrate a dividere gli open space (vedi furn_divider)
+      // Large Corporate: armadi archivio, piante d'ufficio e una fila di
+      // armadi a dividere gli open space (vedi furnBlock())
       furn('furn_cabinet',2,2,'furn_cabinet');
       furn('furn_cabinet',cols-2,2,'furn_cabinet');
       furn('furn_office_plant',2,rows-2,'furn_office_plant');
       furn('furn_office_plant',cols-2,rows-3,'furn_office_plant');
       furn('furn_cabinet',Math.floor(cols/2),rows-2,'furn_cabinet');
-      furn('furn_divider',16,3,'furn_divider',0.75,1.1);
-      furn('furn_divider',16,6,'furn_divider',0.75,1.1);
-      furn('furn_divider',16,9,'furn_divider',0.75,1.1);
+      // Fila di armadi archivio lungo la colonna centrale, a dividere gli
+      // open space — al posto del vecchio furn_divider decorativo (vedi
+      // furnBlock() più sopra).
+      furnBlock(16,3,'furn_cabinet');
+      furnBlock(16,6,'furn_cabinet');
+      furnBlock(16,9,'furn_cabinet');
     } else if(_bg==='coworking'){
       // P.IVA & Founder: lavagne da brainstorming e piante informali
       furn('furn_whiteboard',2,2,'furn_whiteboard');
       furn('furn_whiteboard',cols-2,rows-3,'furn_whiteboard');
       furn('furn_plant',2,rows-2,'furn_plant');
       furn('furn_plant',cols-2,2,'furn_plant');
-      furn('furn_divider',16,3,'furn_divider',0.75,1.1);
-      furn('furn_divider',16,6,'furn_divider',0.75,1.1);
-      furn('furn_divider',16,9,'furn_divider',0.75,1.1);
+      // Fila di lavagne lungo la colonna centrale, al posto del vecchio
+      // furn_divider decorativo — vedi furnBlock() più sopra.
+      furnBlock(16,3,'furn_whiteboard');
+      furnBlock(16,6,'furn_whiteboard');
+      furnBlock(16,9,'furn_whiteboard');
     } else if(_bg==='university'){
       // PA/Ricerca/Accademia: globi e pile di libri
       furn('furn_globe',2,2,'furn_globe');
       furn('furn_globe',cols-2,rows-3,'furn_globe');
       furn('furn_shelf',cols-2,2,'furn_shelf');
       furn('furn_shelf',2,rows-2,'furn_shelf');
-      furn('furn_divider',16,3,'furn_divider',0.75,1.1);
-      furn('furn_divider',16,6,'furn_divider',0.75,1.1);
-      furn('furn_divider',16,9,'furn_divider',0.75,1.1);
+      // Fila di scaffali lungo la colonna centrale, al posto del vecchio
+      // furn_divider decorativo — vedi furnBlock() più sopra.
+      furnBlock(16,3,'furn_shelf');
+      furnBlock(16,6,'furn_shelf');
+      furnBlock(16,9,'furn_shelf');
     }
   }
   // ─────────────────────────────────────────────────────────────
