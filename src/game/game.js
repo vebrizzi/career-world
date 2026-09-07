@@ -2116,17 +2116,30 @@ function renderOutcome(){
 // Azzera davvero tutto lo stato di gioco (stats, mondi, badge, RAL, classe)
 // e — per utenti autenticati — anche i dati salvati su Supabase. Irreversibile,
 // per questo è sempre preceduto da confirmReset().
-function performFullReset(){
+//
+// resetProgress() viene ATTESO prima di mostrare la title screen (a
+// differenza di prima, dove partiva "fire-and-forget"): tra il click su
+// "Ricomincia da zero" e resetProgress() che scrive DEFAULT_STATE su
+// Supabase c'è un giro di rete vero, e la title screen che segue offre da
+// subito "Accedi e riprendi" — il cui handler (afterAuthSuccess() in
+// authScreen.js) rilegge subito il progresso con loadProgress(). Se quella
+// lettura arriva PRIMA che la scrittura del reset sia atterrata sul server,
+// rilegge ancora la riga pre-reset (mondi/NPC "visitati" inclusi) e la
+// giocatrice si ritrova esattamente lì da dove pensava di essere ripartita
+// da zero. Aspettare qui chiude la finestra di questa race — non serve per
+// i guest (resetProgress() è no-op, si risolve subito).
+async function performFullReset(){
   ST.step=0;ST.ans={hard:{},soft:{},pref:{}};
   ST.char=null;ST.gs={SKILL:0,VOICE:0,CLARITY:0,NETWORK:0,ENERGY:STAT_MAX.ENERGY,RADAR:0,INSIDER:0};
   ST.world={id:null,visited:[],choices:[],patterns:[],track:null,officialLevel:0,officialRAL:null,pivaState:null};
   ST.worldsProgress={};
   ST.worldPath=null;ST.worldHistory=[];
   ST.recalibrated=false;ST.burnoutWarned=false;ST.career={ralModifier:0};
-  resetProgress().catch(e=>console.warn('reset failed',e));
   gameRunning=false;evActive=false;exitTriggered=false;
   if(PG){try{PG.destroy(true);}catch(e){}PG=null;}
-  player=null;cursors=null;scn=null;show('title');
+  player=null;cursors=null;scn=null;
+  try{ await resetProgress(); }catch(e){ console.warn('reset failed',e); }
+  show('title');
 }
 
 // Esce dall'account: chiude la sessione Supabase e azzera lo stato locale
