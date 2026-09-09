@@ -1515,10 +1515,19 @@ function grantOfficialLevel(worldId,targetLevel,track,opts={}){
   // accettato/negoziato una cifra diversa dall'offerta calcolata qui.
   const newRAL=overrideRAL??offerRAL;
   // Il colloquio superato dà credito immediato per il contenuto del livello
-  // (non serve rifare a piedi le conversazioni). Il grant gratuito del primo
-  // ingresso NO: deve restare il livello 1 vero, esplorato NPC per NPC —
-  // altrimenti "gratis" salterebbe anche il gameplay, non solo il colloquio.
-  const toGrant=free?[]:wd.npcs.filter(n=>(!n.authOnly||authed)&&(n.level||1)<=targetLevel&&(!n.track||n.track===track));
+  // (non serve rifare a piedi le conversazioni) — ma SOLO per chi in questo
+  // mondo aveva già un livello ufficiale precedente (promozione/cambio
+  // lavoro): lì il credito è una comodità su terreno già esplorato. Il
+  // primissimo livello ufficiale in un mondo — sia alla primissima partita
+  // sia subito dopo un "Ricomincia da zero" (stessa identica situazione dal
+  // punto di vista di worldsProgress) — resta sempre da esplorare NPC per
+  // NPC, altrimenti "superare il colloquio" varrebbe come "aver già visto
+  // tutti", vanificando sia l'esplorazione sia la sensazione di essere
+  // davvero ripartite da zero dopo un reset. Stessa definizione di "primo
+  // ingresso" usata da isFirstWorldEntry in showInterview() e da
+  // anchorRAL==null nel gate di negoziazione RAL.
+  const isFirstGrantInWorld=!(existing.officialLevel||0);
+  const toGrant=(free||isFirstGrantInWorld)?[]:wd.npcs.filter(n=>(!n.authOnly||authed)&&(n.level||1)<=targetLevel&&(!n.track||n.track===track));
   const visited=[...new Set([...existing.visited,...toGrant.map(n=>n.id)])];
   const finalTrack=track||existing.track||null;
 
